@@ -13,6 +13,18 @@ Pure Python standard library (zero third-party dependencies). Ships with a macOS
 
 The in-app UI supports **Chinese / English switching** (button at the top-right corner; the choice is remembered per browser).
 
+## Download & Install
+
+| Platform | Get it | Run |
+|---|---|---|
+| **macOS** | [FileRelay.app.zip](https://github.com/xiaoman-cmd/FileRelay/releases/download/v1.0/FileRelay.app.zip) (v1.0 release) | Unzip → move to `/Applications` → open. First-launch warning? Run once: `xattr -dr com.apple.quarantine /Applications/FileRelay.app` |
+| **Windows** | [Source code (zip)](https://github.com/xiaoman-cmd/FileRelay/archive/refs/heads/main.zip) | Unzip → double-click `scripts\start.bat` (needs [Python 3.8+](https://www.python.org/downloads/), tick *Add to PATH*) |
+| **Linux** | [Source code (zip)](https://github.com/xiaoman-cmd/FileRelay/archive/refs/heads/main.zip) | Unzip → `./scripts/start.sh` (needs Python 3.8+) |
+
+macOS is the only packaged build (it's the only version with the menu-bar shell). Windows / Linux intentionally run from source — the server is pure standard library, so "source" costs nothing extra. The guest side (any phone / computer) never installs anything.
+
+Project website: **https://xiaoman-cmd.github.io/FileRelay/**
+
 ## Features
 
 | Capability | Description |

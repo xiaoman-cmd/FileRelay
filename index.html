@@ -88,6 +88,7 @@
   <div class="wrap bar">
     <div class="logo">File<span>Relay</span></div>
     <nav>
+      <a href="#download" class="en">Download</a><a href="#download" class="zh">下载</a>
       <a href="#features" class="en">Features</a><a href="#features" class="zh">特性</a>
       <a href="#start" class="en">Quick Start</a><a href="#start" class="zh">快速开始</a>
       <a href="src/manual-en.html" class="en">Guide</a><a href="src/使用手册.html" class="zh">手册</a>
@@ -107,10 +108,39 @@
   <div class="cta">
     <a class="btn primary en" href="https://github.com/xiaoman-cmd/FileRelay/releases/download/v1.0/FileRelay.app.zip">Download for macOS</a>
     <a class="btn primary zh" href="https://github.com/xiaoman-cmd/FileRelay/releases/download/v1.0/FileRelay.app.zip">下载 macOS 版</a>
-    <a class="btn ghost en" href="https://github.com/xiaoman-cmd/FileRelay">View on GitHub</a>
-    <a class="btn ghost zh" href="https://github.com/xiaoman-cmd/FileRelay">GitHub 仓库</a>
+    <a class="btn ghost en" href="#download">Windows / Linux</a>
+    <a class="btn ghost zh" href="#download">Windows / Linux</a>
   </div>
 </div>
+
+<section id="download">
+  <div class="wrap">
+    <h2 class="en">Download</h2>
+    <h2 class="zh">下载</h2>
+    <div class="grid">
+      <div class="card">
+        <b class="en">macOS — packaged app</b><b class="zh">macOS —— 打包应用</b>
+        <p class="en">Menu bar app + notifications. Unzip → move to <code>/Applications</code>. If macOS warns on first launch, run once:<br><code>xattr -dr com.apple.quarantine /Applications/FileRelay.app</code></p>
+        <p class="zh">菜单栏应用 + 系统通知。解压 → 拖进 <code>/Applications</code>。首次启动若提示"已损坏"或"身份不明"，执行一次：<br><code>xattr -dr com.apple.quarantine /Applications/FileRelay.app</code></p>
+        <p style="margin-top:12px"><a class="btn primary" style="font-size:14px; padding:9px 18px" href="https://github.com/xiaoman-cmd/FileRelay/releases/download/v1.0/FileRelay.app.zip"><span class="en">Download .app.zip</span><span class="zh">下载 .app.zip</span></a></p>
+      </div>
+      <div class="card">
+        <b class="en">Windows — run from source</b><b class="zh">Windows —— 源码直跑</b>
+        <p class="en">No packaged build (the menu bar is macOS-only — and the server needs nothing else). Unzip, double-click <code>scripts\start.bat</code>. Requires <a href="https://www.python.org/downloads/">Python 3.8+</a> (<em>Add to PATH</em>).</p>
+        <p class="zh">无打包版（菜单栏是 macOS 专属，服务端本就零依赖）。解压后双击 <code>scripts\start.bat</code>。需 <a href="https://www.python.org/downloads/">Python 3.8+</a>（安装时勾选 <em>Add to PATH</em>）。</p>
+        <p style="margin-top:12px"><a class="btn ghost" style="font-size:14px; padding:9px 18px" href="https://github.com/xiaoman-cmd/FileRelay/archive/refs/heads/main.zip"><span class="en">Download source (zip)</span><span class="zh">下载源码 (zip)</span></a></p>
+      </div>
+      <div class="card">
+        <b class="en">Linux / macOS terminal</b><b class="zh">Linux / macOS 终端</b>
+        <p class="en">Same source zip. <code>./scripts/start.sh</code> in a terminal — foreground, <code>Ctrl+C</code> to stop. Python 3.8+ is the only requirement.</p>
+        <p class="zh">同一个源码包。终端里 <code>./scripts/start.sh</code> —— 前台运行，<code>Ctrl+C</code> 停止。只需 Python 3.8+。</p>
+        <p style="margin-top:12px"><a class="btn ghost" style="font-size:14px; padding:9px 18px" href="https://github.com/xiaoman-cmd/FileRelay/archive/refs/heads/main.zip"><span class="en">Download source (zip)</span><span class="zh">下载源码 (zip)</span></a></p>
+      </div>
+    </div>
+    <p class="warn en">💡 The <b>guest side never installs anything</b> — Android / iOS / another computer just scan the QR code. All downloads are also on the <a href="https://github.com/xiaoman-cmd/FileRelay/releases">Releases page</a>.</p>
+    <p class="warn zh">💡 <b>访客侧永远零安装</b> —— 安卓 / iOS / 另一台电脑扫码即用。所有下载也都在 <a href="https://github.com/xiaoman-cmd/FileRelay/releases">Releases 页</a>。</p>
+  </div>
+</section>
 
 <section id="features">
   <div class="wrap">
