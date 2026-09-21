@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>互传 · 使用手册</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1b1b1f; --muted:#6a6a73; --line:#e5e5ea;
+    --card:#f7f7fa; --code-bg:#f2f2f6; --accent:#5B3FE0; --accent-soft:#efeaff;
+    --warn-bg:#fff6e8; --warn-line:#f0c26a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#131316; --fg:#f1f1f5; --muted:#9b9ba4; --line:#2b2b32;
+      --card:#1b1b20; --code-bg:#23232a; --accent:#a897ff; --accent-soft:#241f3d;
+      --warn-bg:#2a2114; --warn-line:#6d5423;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.72 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  .wrap{max-width:820px; margin:0 auto; padding:56px 28px 96px}
+  header{border-bottom:1px solid var(--line); padding-bottom:26px; margin-bottom:36px}
+  .badge{
+    display:inline-block; font-size:12px; letter-spacing:.06em; color:var(--accent);
+    background:var(--accent-soft); border-radius:999px; padding:3px 11px; margin-bottom:14px;
+  }
+  h1{font-size:30px; line-height:1.25; margin:0 0 10px; letter-spacing:-.01em}
+  .sub{color:var(--muted); font-size:14.5px; margin:0}
+  h2{
+    font-size:19px; margin:44px 0 14px; padding-left:12px;
+    border-left:3px solid var(--accent); line-height:1.3;
+  }
+  h3{font-size:15.5px; margin:24px 0 8px}
+  p{margin:10px 0}
+  a{color:var(--accent)}
+  ul,ol{margin:10px 0; padding-left:22px}
+  li{margin:5px 0}
+  code{
+    background:var(--code-bg); border-radius:5px; padding:1.5px 6px;
+    font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  pre{
+    background:var(--code-bg); border:1px solid var(--line); border-radius:10px;
+    padding:14px 16px; overflow-x:auto; margin:14px 0;
+    font:.86em/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  pre code{background:none; padding:0}
+  table{
+    width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;
+    border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  }
+  th,td{padding:10px 13px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top}
+  th{background:var(--card); font-weight:600; font-size:13px; color:var(--muted); letter-spacing:.02em}
+  tr:last-child td{border-bottom:none}
+  .steps{counter-reset:s; list-style:none; padding:0}
+  .steps li{
+    counter-increment:s; position:relative; padding:14px 18px 14px 54px;
+    background:var(--card); border:1px solid var(--line); border-radius:11px; margin:10px 0;
+  }
+  .steps li::before{
+    content:counter(s); position:absolute; left:16px; top:14px;
+    width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff;
+    font-size:13px; font-weight:600; display:flex; align-items:center; justify-content:center;
+  }
+  .note{
+    background:var(--warn-bg); border:1px solid var(--warn-line); border-radius:10px;
+    padding:13px 16px; margin:16px 0; font-size:14px;
+  }
+  .note strong{color:var(--fg)}
+  .kv{display:grid; grid-template-columns:132px 1fr; gap:8px 16px; margin:14px 0; font-size:14px}
+  .kv dt{color:var(--muted)}
+  .kv dd{margin:0}
+  footer{margin-top:56px; padding-top:22px; border-top:1px solid var(--line); color:var(--muted); font-size:13px}
+  figure.shot{margin:18px 0 26px; text-align:center}
+  figure.shot img{max-width:100%; border-radius:10px; box-shadow:0 2px 16px rgba(0,0,0,.14)}
+  figure.shot.narrow img{max-width:300px}
+  figure.shot figcaption{color:var(--muted); font-size:13px; margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="lang" style="font-size:13px; color:var(--muted); margin-bottom:14px"><a href="manual-en.html">English</a></div>
+  <div class="badge">局域网 · 无需联网 · 零账号 · 跨平台</div>
+  <h1>互传 · 局域网任意设备直传</h1>
+  <p class="sub">手机、电脑之间文件和文字<strong>双向</strong>直传：同一 Wi-Fi 内点对点，不用数据线，不用云盘，不经过任何服务器。Mac、Windows、Linux 都能当主机，任何带浏览器的设备都能当访客。</p>
+</header>
+
+<h2>角色与概念</h2>
+<p>整套系统只有两个角色，读完这一段就能上手：</p>
+<table>
+  <thead><tr><th>角色</th><th>是谁</th><th>做什么</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>主机</strong><br><span style="color:var(--muted);font-size:13px">跑服务的一端</span></td>
+      <td>装了本应用的 Mac，或跑了 <code>start.bat</code> / <code>start.sh</code> 的 Windows / Linux 电脑</td>
+      <td>开一个局域网服务；收文件进<strong>收件箱</strong>；把要发出去的东西放进<strong>发件箱</strong>等对方来取</td>
+    </tr>
+    <tr>
+      <td><strong>访客</strong><br><span style="color:var(--muted);font-size:13px">开网页的一端</span></td>
+      <td>任何能开浏览器的设备：安卓 / iOS 手机、平板、另一台电脑。<strong>什么都不用装</strong></td>
+      <td>用浏览器打开主机的地址：上传文件、发文字给主机；取走主机放进发件箱的内容</td>
+    </tr>
+  </tbody>
+</table>
+<pre><code>访客 → 主机   访客浏览器 ──上传／粘贴──▶ 接收服务 ──▶ 收件目录 ~/Downloads/android-inbox
+
+主机 → 访客   主机放进发件箱 ──等待取件──▶ 访客页面点「下载」／「复制全文」</code></pre>
+<p>所有流量只走局域网，不出网、不注册、不登录。页面上显示的主机名、平台、目录都是动态取自服务端的 —— 主机是 Mac、Windows 还是 Linux，文案自动跟着变。</p>
+<div class="note">
+  <strong>为什么主机 → 访客是「等你去取」而不是「弹窗推给你」：</strong>局域网下的网页没有被动接收推送的通道（Web 推送要求 HTTPS + 推送服务器，而这里走的是明文 HTTP）。所以主机发的东西会先排进<strong>发件箱</strong>，访客打开页面就能看到并取走。反正访客本来也要打开页面才能下载，实际体验差别很小。
+</div>
+
+<h2>快速开始</h2>
+
+<h3>第一步：把主机跑起来</h3>
+<table>
+  <thead><tr><th>平台</th><th>启动方式</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>macOS</strong></td>
+      <td>双击「FileRelay.app」</td>
+      <td>不占 Dock，菜单栏右侧出现一个<strong>彩色磁贴小图标</strong>。后台服务随之启动</td>
+    </tr>
+    <tr>
+      <td><strong>Windows</strong></td>
+      <td>双击 <code>start.bat</code></td>
+      <td>自动找 <code>py -3</code> 或 <code>python</code>（需 Python 3.8+，安装时勾选 <em>Add Python to PATH</em>）。关闭窗口即停止服务</td>
+    </tr>
+    <tr>
+      <td><strong>Linux / macOS 终端</strong></td>
+      <td><code>./start.sh</code></td>
+      <td>自动找 <code>python3</code>（3.8+）。前台运行，<code>Ctrl+C</code> 停止</td>
+    </tr>
+  </tbody>
+</table>
+<p>启动横幅会打印两条地址：<strong>本机控制台</strong>（<code>http://127.0.0.1:端口/</code>）和<strong>局域网地址</strong>（给其他设备用）。端口默认 <code>8765</code>，被占用自动顺延，以横幅和运行时信息为准。</p>
+
+<h3>第二步：让访客连上来</h3>
+<ol class="steps">
+  <li>主机上打开<strong>二维码</strong>：Mac 点菜单栏图标 →「显示二维码」；任何平台都可以在本机控制台点「显示二维码」。</li>
+  <li>手机与主机连<strong>同一个 Wi-Fi</strong>，用相机或微信扫码，浏览器就会打开互传页。</li>
+  <li>另一台电脑当访客？直接在它的浏览器里打开横幅里那个<strong>局域网地址</strong>，效果与手机相同。</li>
+</ol>
+
+<h2>主机端：本机控制台（全平台）</h2>
+<p>用<strong>主机自己</strong>的浏览器打开 <code>http://127.0.0.1:端口/</code>，页面会自动切换成<strong>控制台视图</strong> —— 主机的操作台：</p>
+<ul>
+  <li><strong>收件箱 / 发件箱双栏</strong>：左边看收到了什么（可一键打开目录），右边管要发出去的。发件箱栏有拖放区，<strong>把文件拖进去＝发送</strong>，也可以点「发射剪贴板文字」把主机剪贴板内容发给访客。</li>
+  <li><strong>两个剪贴板开关</strong>（页面底部）：「允许对方读取本机剪贴板」与「自动写入收到的文字」，勾选即时生效，不用重启。</li>
+  <li><strong>显示二维码</strong> / <strong>使用说明</strong>（就是本手册）/ <strong>退出服务</strong>。</li>
+</ul>
+<figure class="shot">
+  <img src="ui-console.png" alt="本机控制台：左侧收件箱、右侧发件箱（拖入即发送），底部是两个剪贴板开关">
+  <figcaption>本机控制台 —— 左收件、右发送，拖文件进发件箱即发送</figcaption>
+</figure>
+<div class="note">
+  <strong>控制台只有主机能开：</strong>它只对 <code>127.0.0.1</code> 这类本机地址生效 —— 其他设备（包括同一 Wi-Fi 里的电脑）访问局域网地址时，看到的仍是普通互传页，打不开控制台，也碰不到「退出服务」「打开目录」这些本机操作。局域网里的<strong>另一台电脑</strong>要传文件，直接用互传页就行：上传、发文字、收发件箱全都能用。
+</div>
+
+<h2>主机端：菜单栏（macOS 专属）</h2>
+<p>Mac 版额外有一套菜单栏，日常高频操作不用开浏览器：</p>
+<table>
+  <thead><tr><th>菜单项</th><th>作用</th></tr></thead>
+  <tbody>
+    <tr><td><strong>显示二维码</strong></td><td>弹出原生窗口显示二维码 + 当前局域网地址。换 Wi-Fi 后地址会自动刷新</td></tr>
+    <tr><td><strong>发送剪贴板文字到手机</strong></td><td>把 Mac 剪贴板里的文字放进发件箱，对方页面刷新后就能看到并复制</td></tr>
+    <tr><td><strong>发送文件到手机…</strong></td><td>弹出文件选择框（可多选），选中的文件会出现在对方的收件列表里</td></tr>
+    <tr><td><strong>打开发送目录</strong></td><td>打开发件箱目录。<strong>往里拖文件＝发送</strong>，连菜单都不用点</td></tr>
+    <tr><td><strong>清空发件箱…</strong></td><td>删掉还没被取走的内容。对方已下载的副本不受影响</td></tr>
+    <tr><td><strong>待发 N 项 · 对方在线／离线</strong></td><td>一眼看到还有多少东西等着取，以及对方页面当前是否连着</td></tr>
+    <tr><td><strong>打开接收目录</strong></td><td>在 Finder 中打开收件目录</td></tr>
+    <tr><td><strong>复制接收地址</strong></td><td>把地址复制到剪贴板，方便手动发给对方</td></tr>
+    <tr><td><strong>最近接收</strong></td><td>显示最后一次收到的内容与时间，每 2 秒自动刷新</td></tr>
+    <tr><td><strong>自动写入收到的文字</strong></td><td>默认<strong>开启</strong>。对方发来的文字直接进 Mac 剪贴板——手机上复制、Mac 上 <code>Cmd+V</code> 就完事</td></tr>
+    <tr><td><strong>允许对方读取本机剪贴板</strong></td><td>默认<strong>关闭</strong>。开启后对方页面的「对方剪贴板」栏目即可一键读取（与控制台里的开关等价，两边任一即可）</td></tr>
+    <tr><td><strong>服务端口</strong></td><td>显示<strong>实际</strong>在用的端口。默认 8765，被占用时自动顺延，这里能看到换成了哪个</td></tr>
+    <tr><td><strong>使用说明</strong> / <strong>退出</strong></td><td>打开本手册 / 退出应用并停掉后台服务</td></tr>
+  </tbody>
+</table>
+
+<h2>访客端能做什么</h2>
+
+<h3>上传文件</h3>
+<ul>
+  <li>点「选择文件」可<strong>一次选多个</strong>，支持图片、视频、文档、压缩包等任意类型；也可从其他 App 拖进来。</li>
+  <li>每个文件有独立的进度条，传完显示成功；文件按原名保存，不改名、不压缩，重名自动加序号。</li>
+</ul>
+<figure class="shot narrow">
+  <img src="ui-phone.png" alt="手机端互传页：传文件 / 传文字 / 从对方收三个页签，点击选择文件即可上传">
+  <figcaption>手机端 —— 三个页签：传文件、传文字、从对方收</figcaption>
+</figure>
+
+<h3>发送文字</h3>
+<ul>
+  <li>「传文字」页签的输入框：<strong>长按 → 粘贴</strong>，内容立刻发到主机；也可以手动打字，比如网址、验证码、一段地址。</li>
+</ul>
+<div class="note">
+  <strong>关于「自动读取剪贴板」：</strong>浏览器出于安全策略，禁止网页在非 HTTPS 环境下静默读取剪贴板。所以这里是「你一粘贴就自动发走」，而不是「后台偷偷读」。这是所有局域网方案的共同限制，不是本应用的缺陷。
+</div>
+
+<h3>收主机发来的东西</h3>
+<p>「从对方收」页签（按主机名动态显示）列出对方放进发件箱的全部内容；有东西没取时，页签上显示红色数字角标。</p>
+<ul>
+  <li><strong>下载文件</strong>：点条目右侧的「下载」（或直接点这一行），文件进设备的下载目录。</li>
+  <li><strong>打包下载</strong>：条目多时点「打包 zip」一次全取走。</li>
+  <li><strong>看文字、复制</strong>：文字条目点「查看」展开全文，再点「复制全文」粘到别的 App。</li>
+  <li><strong>取完清空</strong>：都收好后点「收下并清空」，主机上的待发副本随即删除（对方已下载的不受影响）。</li>
+</ul>
+<div class="note">
+  <strong>页面开着才会自动刷新：</strong>手机浏览器不允许后台网页持续刷新，所以角标只在页面处于前台时更新。切回页面、或点一下收件页签，都会立刻刷新一次。主机发来的东西会一直排队（默认保留 24 小时，上限 200 项），晚点来取也不会丢。
+</div>
+
+<h3>读主机此刻的剪贴板</h3>
+<p>发件箱是「主机主动发来的东西排队等取」，而<strong>剪贴板是主机此刻手上正拿着的</strong>，所以不进队列、不留档 —— 点一次拿一次。</p>
+<ol class="steps">
+  <li>主机先放行：Mac 在菜单栏、其他平台在本机控制台页底部，勾上<strong>「允许对方读取本机剪贴板」</strong>。</li>
+  <li>访客切到收件页签，最上面那块就是「对方剪贴板」（显示主机的实际名称）。</li>
+  <li>点<strong>「读取」</strong>，主机当前的剪贴板文字会显示在下方，点「复制」即可粘到别的 App。</li>
+</ol>
+<ul>
+  <li>这块区域<strong>如实显示开关状态</strong>：主机还没放行时直接写「还没允许」并告诉你去哪开；放行后写成「已允许」。</li>
+  <li>读出来的内容只显示在页面上，<strong>不落盘、不进队列</strong> —— 一次性动作，不留任何文件。</li>
+</ul>
+<div class="note">
+  <strong>为什么默认是关的：</strong>剪贴板里经常有密码、验证码、私聊片段，而局域网内任何拿到地址的设备都能读 —— 所以必须由你在主机上<strong>逐次明确开启</strong>。用完把勾去掉即可；服务端每次请求都现读开关，改完立刻生效、不用重启。
+</div>
+
+<h2>收到的内容放在哪、发出去的放在哪</h2>
+<dl class="kv">
+  <dt>收件目录</dt><dd><code>~/Downloads/android-inbox</code>（Windows 即 <code>%USERPROFILE%\Downloads\…</code>；下载目录被 OneDrive 等重定向时，以启动横幅打印的实际路径为准）</dd>
+  <dt>收到的文件</dt><dd>按原文件名保存，重名自动加序号（如 <code>photo(1).jpg</code>），不覆盖</dd>
+  <dt>收到的文字</dt><dd>追加写入收件目录下的 <code>clipboard.log</code>，每条带时间戳分隔；同时按开关决定是否进主机剪贴板。<strong>记录只滚动保留最近 200 条</strong>，更早的自动丢弃 —— 传文字常含验证码、密码这类临时内容，不该永久留在盘上。主机可随时在控制台页底「清空文字记录」或菜单栏「清空文字记录…」一键清空</dd>
+  <dt>状态文件</dt><dd>收件目录下的 <code>__last.json</code>，供菜单栏/控制台显示「最近接收」，可忽略</dd>
+  <dt>发件箱</dt><dd><code>~/Downloads/android-outbox</code>。要发的东西都先放这儿<strong>等对方来取</strong>；对方点「收下并清空」后自动删除，超 24 小时没人取也会自动清理，队列上限 200 项</dd>
+  <dt>开关文件</dt><dd><code>~/.androidtransfer/flags/</code>，记录两个剪贴板开关的状态，可忽略</dd>
+  <dt>运行时信息</dt><dd><code>~/.androidtransfer/runtime</code>，记录实际端口、进程号与访问地址。服务退出时自动删除，可忽略</dd>
+</dl>
+
+<h2>常见问题</h2>
+<table>
+  <thead><tr><th>现象</th><th>原因与解决办法</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>访客打不开页面</td>
+      <td>依次确认：① 两端在<strong>同一个 Wi-Fi</strong>（别一个连 5G 一个连访客网络）；② 路由器没开「AP 隔离 / 客户端隔离」；③ 主机防火墙没拦传入连接（Windows 首次启动弹的防火墙询问必须点<strong>「允许访问」</strong>——点了取消后 <code>127.0.0.1</code> 仍能打开，看起来"服务正常"，实则局域网全断）</td>
+    </tr>
+    <tr>
+      <td>提示端口被占用 / 端口不是 8765</td>
+      <td>不用管。<strong>服务会自动顺延到下一个可用端口</strong>（8765 → 8766 → …），横幅、二维码、「复制接收地址」用的都是实际端口。功能完全不受影响</td>
+    </tr>
+    <tr>
+      <td>Mac：双击提示「已损坏」或「来自身份不明的开发者」</td>
+      <td>网络传输的应用会被打上隔离属性，执行一次即可：<br><code>xattr -dr com.apple.quarantine "/Applications/FileRelay.app"</code></td>
+    </tr>
+    <tr>
+      <td>Mac：Finder 里图标还是旧的</td>
+      <td>系统图标缓存未刷新。在 <code>访达</code> 中执行 <code>killall Finder</code>，或把应用拖到桌面再拖回</td>
+    </tr>
+    <tr>
+      <td>收不到系统通知</td>
+      <td>macOS：到 <code>系统设置 → 通知</code> 找到本应用，打开「允许通知」。Linux：确认装了 <code>notify-send</code>（多数发行版自带）。Windows：个别精简系统弹窗不显示，不影响传输本身</td>
+    </tr>
+    <tr>
+      <td>收到的文件找不到</td>
+      <td>以启动横幅里打印的<strong>实际收件目录</strong>为准 —— 下载文件夹被 OneDrive 等重定向的系统，服务会自动尝试备选位置</td>
+    </tr>
+    <tr>
+      <td>发件箱里的文件一直留着</td>
+      <td>正常，它在等对方来取。对方点「收下并清空」后立即删除；不点的话<strong>超过 24 小时</strong>自动清理（上限 200 项）。也可随时手动清空</td>
+    </tr>
+    <tr>
+      <td>文字发过去了，主机剪贴板里没有</td>
+      <td>检查「自动写入收到的文字」开关（Mac 在菜单栏、其他平台在控制台页底，打勾＝开启）。关掉后文字仍会存进 <code>clipboard.log</code>（滚动保留最近 200 条），只是不进剪贴板</td>
+    </tr>
+    <tr>
+      <td>访客点「读取」说还没允许</td>
+      <td>这个开关<strong>默认关闭</strong>，必须先在主机上放行（见「读主机此刻的剪贴板」）。放行后再点一次「读取」即可，<strong>不用重启服务</strong></td>
+    </tr>
+    <tr>
+      <td>「读取」显示「剪贴板现在是空的」</td>
+      <td>如实反馈 —— 主机此刻的剪贴板确实没有文本。剪贴板里若是<strong>图片或文件</strong>，本应用只处理文字，显示为空</td>
+    </tr>
+    <tr>
+      <td>安卓下载时提示「文件可能有害」</td>
+      <td>安卓 Chrome 对<strong>非 HTTPS 地址下载</strong>的例行提示，选「仍然下载」即可。局域网自建服务拿不到可信证书，这条提示绕不过去</td>
+    </tr>
+    <tr>
+      <td>点「复制全文」没反应</td>
+      <td>浏览器不允许非 HTTPS 页面用新版剪贴板接口，应用会自动退回兼容方式；万一也被拦，按钮会变成「请长按上方文字手动复制」</td>
+    </tr>
+    <tr>
+      <td>换了 Wi-Fi 后地址失效</td>
+      <td>正常。重新打开二维码即可，它每次都读当前地址</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>端口是怎么选的</h2>
+<ol class="steps">
+  <li>先试<strong>首选端口</strong>（默认 <code>8765</code>）。</li>
+  <li>若被占用，依次试 <code>8766</code>、<code>8767</code>… 最多向后探 20 个，取第一个能真正绑上的。</li>
+  <li>把<strong>实际端口</strong>写进 <code>~/.androidtransfer/runtime</code>；二维码、访问地址一律以它为准。</li>
+  <li>服务退出时自动清掉这个文件，不留下误导下次启动的旧端口。</li>
+</ol>
+<div class="note">
+  <strong>不用担心记错端口：</strong>你从来不需要手动输端口——扫码或「复制接收地址」拿到的地址里已经包含正确端口。Windows 首次启动若弹防火墙询问，点「允许访问」即可让局域网设备连进来。
+</div>
+
+<h2>高级设置</h2>
+
+<h3>改端口或目录（环境变量，三个平台通用）</h3>
+<pre><code>PORT=9000 ./start.sh            # 首选端口；被占用自动顺延
+PORT_SPAN=5 ./start.sh          # 限制顺延范围（只允许 8765～8769）
+INBOX=… OUTBOX=… ./start.sh     # 自定义收件 / 发件目录
+OUTBOX_TTL=86400 OUTBOX_MAX=200 ./start.sh   # 发件箱保留秒数 / 队列上限</code></pre>
+<p>Windows 用 <code>set PORT=9000</code>（或 PowerShell 的 <code>$env:PORT=9000</code>）后再跑 <code>start.bat</code>。Mac 的 .app 里这些值写在启动器 <code>Contents/MacOS/AndroidTransfer</code> 中，右键 → 显示包内容即可编辑。</p>
+<div class="note">
+  <strong>不要为了「固定端口」去关掉顺延。</strong>把它设成首选值就够了：真被占用时顺延能保证服务照常可用，而固定端口只会让你多遇到一次「打不开页面」。
+</div>
+
+<h3>开启访问口令</h3>
+<pre><code>TOKEN=auto ./start.sh   # 首次自动生成口令并记住，重启不变</code></pre>
+<p>默认同一 Wi-Fi 下任何设备都能上传。开启口令后，二维码和「复制接收地址」都会自动带上 <code>?token=…</code>，访客扫码即可，无需手动输入。<strong>开启后发件箱的读取和下载同样受口令保护</strong>。</p>
+
+<h3>开机自动启动</h3>
+<ul>
+  <li><strong>macOS</strong>：<code>系统设置 → 通用 → 登录项</code>，点「+」加入「FileRelay.app」。</li>
+  <li><strong>Windows</strong>：<code>Win+R</code> 输入 <code>shell:startup</code>，给 <code>start.bat</code> 建一个快捷方式放进去。</li>
+  <li><strong>Linux</strong>：桌面环境的「自启动」设置里加一条 <code>start.sh</code>，或按发行版惯例写 systemd user unit。</li>
+</ul>
+
+<h2>多台主机怎么用</h2>
+<p>每台电脑各自跑一份就好 —— 两台可以都用 <code>8765</code> 端口，因为 IP 不同：</p>
+<ul>
+  <li>每台各有自己的二维码，<strong>扫哪台就传到哪台</strong>，天然解决「发到哪台」的选择问题。</li>
+  <li>互不干扰，收件目录各自独立在本机。</li>
+  <li>端口冲突只在<strong>同一台机器</strong>上才会发生，跨机器不冲突。</li>
+</ul>
+
+<h2>安全须知</h2>
+<ul>
+  <li>本服务<strong>只监听局域网</strong>，不做端口转发，不对外暴露。</li>
+  <li>公共 Wi-Fi（咖啡厅、酒店）下使用时，建议开启 <code>TOKEN</code> 口令，避免同网段其他人上传文件或读走你发出去的内容。</li>
+  <li>本机控制台只对 <code>127.0.0.1</code> 生效，「打开目录」「退出服务」这类本机操作<strong>无法被局域网里的其他设备调用</strong>。</li>
+  <li>「允许对方读取本机剪贴板」<strong>默认关闭</strong>：剪贴板里经常有密码、验证码，只有明确需要时才打开。</li>
+  <li>反过来，访客发来的文字默认会自动写进主机剪贴板（方便直接粘贴）。若担心覆盖你手上的复制内容，把「自动写入收到的文字」关掉即可。</li>
+  <li>用完即可退出（Mac 菜单栏点「退出」；其他平台关窗口 / <code>Ctrl+C</code> / 控制台「退出服务」），服务随之停止，不留后台进程。</li>
+</ul>
+
+<h2>卸载</h2>
+<ol>
+  <li>先停服务：Mac 菜单栏点「退出」；Windows 关掉 <code>start.bat</code> 窗口；Linux <code>Ctrl+C</code>。</li>
+  <li>macOS：把「FileRelay.app」从 <code>/Applications</code> 拖到废纸篓。Windows / Linux：删除项目目录即可。</li>
+  <li>如不再需要已收到的文件，可一并删除收件目录与发件箱（<code>~/Downloads/android-inbox</code>、<code>~/Downloads/android-outbox</code>）。</li>
+  <li>可选：删掉 <code>~/.androidtransfer</code>（运行时信息与开关文件目录）。</li>
+</ol>
+
+<footer>
+  互传 · 局域网双向直传（手机 ⇄ 电脑，macOS / Windows / Linux）· 首选端口 8765（占用自动顺延）· 全流程不经过任何外部服务器
+</footer>
+
+</div>
+</body>
+</html>

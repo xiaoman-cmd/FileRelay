@@ -1,0 +1,13 @@
+.DS_Store
+
+# 构建产物（跑 ./build.sh 生成，不入库）
+dist/
+__pycache__/
+*.pyc
+
+# 工作区本地数据
+.workbuddy/
+
+# 商业评估报告不上库（本地留存）
+docs/公网化与付费可行性评估.html
+docs/跨平台可行性分析报告.html

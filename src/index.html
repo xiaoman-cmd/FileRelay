@@ -1,0 +1,1375 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#4A2FD6" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#8C7BFF" media="(prefers-color-scheme: light)">
+<title>文件互传</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+  :root{
+    --bg:#F3F4F8; --card:#FFFFFF; --fg:#1B1D22; --mut:#6B7280; --line:#E6E8EE;
+    --acc:#6A4EE8; --acc2:#8C7BFF; --ok:#12A150; --err:#E5484D; --warn:#C77700;
+    --soft:#F0EFFE; --track:#ECEBF3;
+    /* toast 专用：--ok/--err 是"文字压在背景上"调出来的，拿它们当背景配白字对比度不够，
+       所以失败/成功提示单独用深一档的底色 */
+    --okBg:#0B6B36; --errBg:#B3261E; --toastFg:#FFFFFF;
+    --sh:0 1px 2px rgba(16,18,27,.05), 0 8px 24px -12px rgba(16,18,27,.18);
+    --sh-lg:0 2px 4px rgba(16,18,27,.05), 0 20px 44px -18px rgba(74,47,214,.35);
+    --r:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0F1115; --card:#1A1D24; --fg:#E8EAED; --mut:#9AA0A6; --line:#2A2E37;
+      --acc:#9B8CFF; --acc2:#B4A6FF; --ok:#3DD68C; --err:#FF6369; --warn:#F5B944;
+      --soft:#221F3A; --track:#22262E;
+      --okBg:#0E6B3A; --errBg:#9B2A24; --toastFg:#FFFFFF;
+      --sh:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+      --sh-lg:0 2px 6px rgba(0,0,0,.4), 0 22px 48px -20px rgba(140,123,255,.45);
+    }
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--fg); min-height:100vh;
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-text-size-adjust:100%;
+    padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 28px);
+  }
+  .wrap{max-width:520px;margin:0 auto}
+
+  /* ---------- 头部 ---------- */
+  .hd{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .tile{
+    width:46px;height:46px;flex:0 0 46px;border-radius:13px;
+    background:linear-gradient(155deg,var(--acc2),#4A2FD6);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 16px -6px rgba(74,47,214,.6);
+  }
+  .tile svg{width:26px;height:26px;display:block}
+  h1{font-size:19px;line-height:1.25;margin:0;letter-spacing:.2px}
+  .host{margin:3px 0 0;font-size:12.5px;color:var(--mut);display:flex;align-items:center;gap:6px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:0 0 7px;box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 20%,transparent)}
+  .dot.off{background:var(--err);box-shadow:0 0 0 3px color-mix(in srgb,var(--err) 20%,transparent)}
+  .host code{font:inherit;color:var(--fg);opacity:.75}
+
+  /* ---------- 分页 ---------- */
+  .tabs{
+    display:flex;gap:4px;background:var(--card);border:1px solid var(--line);
+    border-radius:13px;padding:4px;margin-bottom:14px;box-shadow:var(--sh);
+  }
+  .tab{
+    flex:1;min-width:0;overflow:hidden;border:0;background:none;color:var(--mut);font:inherit;font-weight:600;font-size:14.5px;
+    padding:9px 0;border-radius:9px;cursor:pointer;transition:background .16s,color .16s;white-space:nowrap;
+  }
+  .tab.on{background:var(--soft);color:var(--acc)}
+  .pane{display:none}
+  .pane.on{display:block;animation:fade .22s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  /* ---------- 拖放区 ---------- */
+  .drop{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    background:var(--card);border:1.5px dashed var(--line);border-radius:var(--r);
+    padding:34px 18px;text-align:center;cursor:pointer;
+    transition:border-color .16s,background .16s,transform .12s;box-shadow:var(--sh);
+  }
+  .drop:active{transform:scale(.99)}
+  .drop.hot{border-color:var(--acc);background:var(--soft)}
+  .drop-ico{
+    width:44px;height:44px;border-radius:13px;background:var(--soft);color:var(--acc);
+    display:flex;align-items:center;justify-content:center;margin-bottom:8px;
+  }
+  .drop-ico svg{width:23px;height:23px}
+  .drop-t{font-weight:650;font-size:15.5px}
+  .drop-s{font-size:12.5px;color:var(--mut)}
+
+  /* ---------- 文件列表 ---------- */
+  .list{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-top:12px;overflow:hidden;box-shadow:var(--sh)}
+  .list-hd{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:11px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--mut);
+  }
+  .lnk{border:0;background:none;color:var(--acc);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;padding:2px 4px}
+  .item{display:flex;align-items:center;gap:11px;padding:10px 14px;border-bottom:1px solid var(--line)}
+  .item:last-child{border-bottom:0}
+  .thumb{
+    width:38px;height:38px;flex:0 0 38px;border-radius:10px;overflow:hidden;
+    background:var(--soft);color:var(--acc);display:flex;align-items:center;justify-content:center;
+    font-size:9.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+    background-size:cover;background-position:center;
+  }
+  .meta{min-width:0;flex:1}
+  .nm{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sz{font-size:11.5px;color:var(--mut);margin-top:1px}
+  .pbar{height:3px;background:var(--track);border-radius:3px;overflow:hidden;margin-top:6px;display:none}
+  .item.busy .pbar{display:block}
+  .pbar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc2),var(--acc));transition:width .18s}
+  .st{flex:0 0 auto;font-size:11.5px;font-weight:600;color:var(--mut)}
+  .item.ok .st{color:var(--ok)}
+  .item.bad .st{color:var(--err)}
+  .item.bad .nm{color:var(--err)}
+
+  /* ---------- 主按钮 ---------- */
+  .go{
+    width:100%;border:0;border-radius:14px;padding:15px;margin-top:12px;
+    font:inherit;font-size:15.5px;font-weight:650;color:#fff;cursor:pointer;
+    background:linear-gradient(155deg,var(--acc2),#4A2FD6);
+    box-shadow:var(--sh-lg);transition:opacity .16s,transform .12s;
+  }
+  .go:active:not(:disabled){transform:scale(.985)}
+  /* 禁用态换成中性底：只把渐变调暗会让人以为"能点但没反应" */
+  .go:disabled{
+    background:var(--track); color:var(--mut);
+    box-shadow:none; cursor:default;
+  }
+
+  /* ---------- 文字页 ---------- */
+  .ta-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+  textarea{
+    width:100%;min-height:190px;border:0;background:none;color:var(--fg);
+    padding:14px;font:inherit;font-size:15px;line-height:1.6;resize:vertical;
+  }
+  textarea:focus{outline:none}
+  textarea::placeholder{color:var(--mut)}
+  .ta-foot{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:9px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--mut);
+  }
+  .chip{background:var(--soft);color:var(--acc);border-radius:999px;padding:3px 9px;font-weight:600;font-size:11.5px}
+
+  /* ---------- 最近收到 ---------- */
+  .recv{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+  .recv>summary{
+    padding:12px 14px;font-size:13.5px;font-weight:600;cursor:pointer;list-style:none;
+    display:flex;justify-content:space-between;align-items:center;color:var(--fg);
+  }
+  .recv>summary::-webkit-details-marker{display:none}
+  .recv>summary::after{content:"›";font-size:19px;color:var(--mut);line-height:1;transform:rotate(90deg);transition:transform .2s}
+  .recv[open]>summary::after{transform:rotate(-90deg)}
+  .recv ul{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+  .recv li{display:flex;justify-content:space-between;gap:12px;padding:9px 14px;font-size:12.5px;border-bottom:1px solid var(--line)}
+  .recv li:last-child{border-bottom:0}
+  .recv li span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .recv li span:last-child{color:var(--mut);flex:0 0 auto}
+  .recv .empty{padding:14px;font-size:12.5px;color:var(--mut);text-align:center}
+
+  /* ---------- 提示条 ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 20px);
+    transform:translate(-50%,140%);max-width:calc(100% - 32px);
+    background:var(--fg);color:var(--bg);border-radius:12px;padding:11px 16px;
+    font-size:13.5px;font-weight:600;box-shadow:0 10px 30px -8px rgba(0,0,0,.5);
+    transition:transform .26s cubic-bezier(.2,.9,.3,1),opacity .2s,visibility .26s;
+    pointer-events:none;z-index:9;
+    display:flex;align-items:center;gap:8px;
+    /* 光靠位移藏不干净：元素矮时 140% 不够，视口外还可能被截进长截图。
+       opacity + visibility 才是可靠的"不可见" */
+    opacity:0;visibility:hidden;
+  }
+  .toast.show{transform:translate(-50%,0);opacity:1;visibility:visible}
+  .toast.bad{background:var(--errBg);color:var(--toastFg)}
+  .toast.ok{background:var(--okBg);color:var(--toastFg)}
+
+  /* ---------- 从 Mac 收：页签徽标 ---------- */
+  /* 注意：这一整段（含下面的 .mini/.dl/.ob-*/.row）曾经整块漏掉 —— HTML/JS 里一直在用这些类，
+     样式表里却一条都没有，页面能用但"裸"的。改这块时顺手核对「JS 用到的类都在这里」。 */
+  .badge{
+    display:inline-block;min-width:17px;margin-left:6px;padding:0 5px;
+    background:var(--acc);color:#fff;border-radius:999px;
+    font-size:10.5px;font-weight:700;line-height:17px;text-align:center;vertical-align:1px;
+  }
+  .badge[hidden]{display:none}
+
+  /* ---------- 从 Mac 收：列表行与操作 ---------- */
+  .item.tap{cursor:pointer}
+  .item.tap:active{background:var(--soft)}
+  .mini{
+    flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--fg);
+    font:inherit;font-size:12px;font-weight:600;border-radius:9px;padding:5px 10px;cursor:pointer;
+  }
+  .mini.acc{border-color:transparent;background:var(--soft);color:var(--acc)}
+  .dl{
+    flex:0 0 auto;font-size:12.5px;font-weight:600;color:var(--acc);
+    text-decoration:none;padding:5px 8px;border-radius:9px;
+  }
+  .dl:active{background:var(--soft)}
+  .ob-empty{padding:16px 14px;font-size:12.5px;color:var(--mut);text-align:center;line-height:1.6}
+  .ob-hint{margin:10px 2px 0;font-size:12px;color:var(--mut);line-height:1.6}
+  .ob-more{border-top:1px solid var(--line);padding:10px 14px 12px;background:var(--soft)}
+  .ob-more pre{
+    margin:0;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-word;
+    font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);
+  }
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px;align-items:center}
+
+  /* ---------- Mac 剪贴板（一次性读取，与发件箱队列无关） ---------- */
+  .clip-out{padding:12px 14px;background:var(--soft);border-top:1px solid var(--line)}
+  .clip-out pre{
+    margin:0;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-word;
+    font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);
+  }
+  .clip-n{margin-left:auto;font-size:12px;color:var(--mut)}
+
+  /* ================= 桌面控制台（宿主机本机访问时显示） =================
+     移动端那套是单列、为手机设计的。宿主机（电脑）打开同一份页面时真正需要的是
+     一块「管理面板」：左边是收到的、右边是要发出去的，外加设备身份与各项开关。
+     两套 UI 共存于同一个文件，靠 body.hostmode 切换 —— 单文件部署不能拆成两份。 */
+  .mobile-only{display:block}
+  body.hostmode .mobile-only{display:none}
+  .hostmode-only{display:none}
+  body.hostmode .hostmode-only{display:inline-block}
+  .cpill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--acc)}
+  .console{display:none}
+  body.hostmode .console{display:block}
+  body.hostmode .wrap{max-width:1000px}
+
+  .ccols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  @media (max-width:760px){.ccols{grid-template-columns:1fr}}
+  .ccol{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+  .chead{
+    display:flex;align-items:center;gap:8px;padding:11px 14px;
+    border-bottom:1px solid var(--line);font-size:12.5px;color:var(--mut);
+  }
+  .chead b{font-size:13.5px;color:var(--fg)}
+  .chead .lnk:first-of-type{margin-left:auto}
+  .cdrop{
+    display:block;margin:12px 14px;padding:24px 14px;text-align:center;cursor:pointer;
+    border:1.5px dashed var(--line);border-radius:12px;color:var(--mut);font-size:12.5px;line-height:1.6;
+    transition:border-color .16s,background .16s,color .16s;
+  }
+  .cdrop:hover,.cdrop.hot{border-color:var(--acc);background:var(--soft);color:var(--acc)}
+  .cbody{max-height:340px;overflow:auto}
+  .cfoot{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+    padding:12px 14px;margin-top:14px;box-shadow:var(--sh);font-size:12.5px;color:var(--mut);
+  }
+  .cfoot label{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .cfoot input[type=checkbox]{accent-color:var(--acc)}
+  .cfoot .sp{margin-left:auto}
+  .danger{color:var(--err)}
+  .qrmask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
+  .qrmask.on{display:flex}
+  .qrbox{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;text-align:center;max-width:340px}
+  .qrbox img{width:260px;height:260px;image-rendering:pixelated;display:block;border-radius:8px;background:#fff}
+  .qrbox .qaddr{margin-top:10px;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);word-break:break-all}
+  .qrbox .qhint{margin-top:6px;font-size:12px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hd">
+    <div class="tile" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3v11"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4.5 18.5h15"/>
+      </svg>
+    </div>
+    <div style="min-width:0">
+      <h1 id="appTitle">互传</h1>
+      <p class="host"><span class="dot" id="dot"></span><span id="addr" data-i18n="connecting">正在连接…</span><span class="cpill hostmode-only" data-i18n="hostPill">主机</span></p>
+    </div>
+    <button class="mini" id="langBtn" type="button" style="margin-left:auto;flex:0 0 auto" title="切换语言 / Switch language">EN</button>
+  </header>
+
+  <!-- ================= 桌面控制台（仅宿主机本机访问时出现） ================= -->
+  <section class="console" id="console">
+    <div class="ccols">
+
+      <div class="ccol">
+        <div class="chead">
+          <b data-i18n="inbox">收件箱</b><span id="cinSum">—</span>
+          <button class="lnk" id="cinOpen" type="button" data-i18n="openDir">打开目录</button>
+        </div>
+        <div class="cbody" id="cinItems"><div class="ob-empty" data-i18n="loading">正在加载…</div></div>
+      </div>
+
+      <div class="ccol">
+        <div class="chead">
+          <b data-i18n="outbox">发件箱</b><span id="coutSum">—</span>
+          <button class="lnk" id="coutOpen" type="button" data-i18n="openDir">打开目录</button>
+        </div>
+        <label class="cdrop" id="coutDrop">
+          <input id="coutFile" type="file" multiple hidden>
+          <span data-i18n-html="coutDrop">把文件拖到这里，或点击选择<br>放进发件箱后，对方打开页面即可取走</span>
+        </label>
+        <div class="cbody" id="coutItems"><div class="ob-empty" data-i18n="loading">正在加载…</div></div>
+        <div class="chead" style="border-top:1px solid var(--line);border-bottom:0">
+          <button class="lnk" id="coutClip" type="button" data-i18n="sendClipText">发送剪贴板文字</button>
+          <button class="lnk danger" id="coutClear" type="button" data-i18n="clearOutbox">清空发件箱</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="cfoot">
+      <label><input type="checkbox" id="cClipWrite"><span data-i18n="clipWriteLbl">对方文字自动写入本机剪贴板</span></label>
+      <label><input type="checkbox" id="cClipRead"><span data-i18n="clipReadLbl">允许对方读取本机剪贴板</span></label>
+      <span class="sp"></span>
+      <button class="lnk" id="cQR" type="button" data-i18n="showQR">显示二维码</button>
+      <button class="lnk" id="cDoc" type="button" data-i18n="userGuide">使用说明</button>
+      <button class="lnk danger" id="cClipClear" type="button" data-i18n="clearClipLog">清空文字记录</button>
+      <button class="lnk danger" id="cQuit" type="button" data-i18n="quit">退出服务</button>
+    </div>
+  </section>
+
+  <!-- ================= 移动端 / 外来设备视图 ================= -->
+  <div class="mobile-only" id="mobileUI">
+
+  <nav class="tabs">
+    <button class="tab on" data-pane="files" data-i18n="tabFiles">传文件</button>
+    <button class="tab" data-pane="text" data-i18n="tabText">传文字</button>
+    <button class="tab" data-pane="recv"><span id="tabRecvLabel" data-i18n="tabRecv">从对方收</span><span class="badge" id="badge" hidden>0</span></button>
+  </nav>
+
+  <!-- ================= 传文件 ================= -->
+  <section class="pane on" id="pane-files">
+    <label class="drop" id="drop">
+      <input id="file" type="file" multiple hidden>
+      <span class="drop-ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/><path d="M4.5 15v3.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V15"/>
+        </svg>
+      </span>
+      <span class="drop-t" data-i18n="dropT">点击选择文件</span>
+      <span class="drop-s" data-i18n="dropS">支持多选 · 也可从其他 App 拖进来</span>
+    </label>
+
+    <div class="list" id="list" hidden>
+      <div class="list-hd">
+        <span id="sum">—</span>
+        <button class="lnk" id="clear" type="button" data-i18n="removeAll">全部移除</button>
+      </div>
+      <div id="items"></div>
+    </div>
+
+    <button class="go" id="send" type="button" disabled>选择文件后上传</button>
+
+    <details class="recv" id="recvbox">
+      <summary data-i18n="recentRecv">最近收到</summary>
+      <ul id="recent"><li class="empty" data-i18n="recentEmpty0">展开后加载…</li></ul>
+    </details>
+  </section>
+
+  <!-- ================= 传文字 ================= -->
+  <section class="pane" id="pane-text">
+    <div class="ta-wrap">
+      <textarea id="clip" placeholder="长按此处 → 粘贴，内容会立刻发到对方"></textarea>
+      <div class="ta-foot">
+        <span id="cc">0 字</span>
+        <span class="chip" data-i18n="autoSendChip">粘贴后自动发送</span>
+      </div>
+    </div>
+    <button class="go" id="sendClip" type="button" disabled>发送到对方</button>
+  </section>
+
+  <!-- ================= 从对方收 ================= -->
+  <section class="pane" id="pane-recv">
+    <!-- 对方此刻的剪贴板：一次性动作，不进队列（队列里的是对方主动发来的东西） -->
+    <div class="list">
+      <div class="list-hd">
+        <span id="clipTitle">对方剪贴板</span>
+        <button class="lnk" id="clipNow" type="button" data-i18n="clipNow">读取</button>
+      </div>
+      <div id="clipBody"><div class="ob-empty" data-i18n="clipGate0">正在查询开关状态…</div></div>
+    </div>
+
+    <div class="list">
+      <div class="list-hd">
+        <span id="obSum">—</span>
+        <span>
+          <button class="lnk" id="obZip" type="button" disabled data-i18n="zipAll">打包 zip</button>
+          <button class="lnk" id="obClear" type="button" disabled data-i18n="recvClear">收下并清空</button>
+        </span>
+      </div>
+      <div id="obItems"><div class="ob-empty" data-i18n="obLoading">正在读取…</div></div>
+    </div>
+    <p class="ob-hint" data-i18n-html="obHint">对方发来的内容会排在队列里等着，随时来取；下载完点「收下并清空」把它们从对方设备上删掉。</p>
+  </section>
+
+  </div><!-- /mobileUI -->
+
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="qrmask" id="qrmask">
+  <div class="qrbox">
+    <img id="qrImg" alt="连接二维码" data-i18n-alt="qrAlt">
+    <div class="qaddr" id="qrAddr">—</div>
+    <div class="qhint" data-i18n="qrHint">对方与这台设备连同一个 Wi-Fi，用相机或微信扫一扫</div>
+    <div class="row" style="justify-content:center">
+      <button class="mini acc" id="qrCopy" type="button" data-i18n="qrCopy">复制地址</button>
+      <button class="mini" id="qrClose" type="button" data-i18n="close">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const TOKEN = new URLSearchParams(location.search).get('token') || '';
+  const $  = id => document.getElementById(id);
+  const auth = h => { if(TOKEN) h['X-Token'] = TOKEN; return h; };
+
+  /* ================= 中 / EN 界面语言 =================
+     单文件双语文案表：静态文案用 data-i18n / data-i18n-html / data-i18n-ph /
+     data-i18n-alt 标注，动态文案（toast、状态、确认框）一律走 tt()/TP()。
+     语言只存 localStorage（纯前端行为，服务端无感知），缺省跟随浏览器语言。
+     带占位符的条目用 {peer} {n} 等变量，tt() 只做字面替换、不递归 —— 需要嵌套时
+     （如剪贴板未放行提示里嵌开关指引）由调用方先把内层翻译好再当变量传入。 */
+  const STR = {
+  zh: {
+    langBtn:'EN', hostPill:'主机', connecting:'正在连接…', loading:'正在加载…',
+    inbox:'收件箱', outbox:'发件箱', openDir:'打开目录',
+    coutDrop:'把文件拖到这里，或点击选择<br>放进发件箱后，对方打开页面即可取走',
+    sendClipText:'发送剪贴板文字', clearOutbox:'清空发件箱',
+    clipWriteLbl:'对方文字自动写入本机剪贴板', clipReadLbl:'允许对方读取本机剪贴板',
+    showQR:'显示二维码', userGuide:'使用说明', clearClipLog:'清空文字记录', quit:'退出服务',
+    tabFiles:'传文件', tabText:'传文字', tabRecv:'从对方收',
+    dropT:'点击选择文件', dropS:'支持多选 · 也可从其他 App 拖进来',
+    removeAll:'全部移除', recentRecv:'最近收到', recentEmpty0:'展开后加载…',
+    clipPlaceholder:'长按此处 → 粘贴，内容会立刻发到 {peer}',
+    autoSendChip:'粘贴后自动发送', sendTo:'发送到 {peer}', peerClipTitle:'{peer} 剪贴板',
+    clipNow:'读取', clipGate0:'正在查询开关状态…', zipAll:'打包 zip', recvClear:'收下并清空',
+    obLoading:'正在读取…',
+    obHint:'{peer} 发来的内容会排在队列里等着，随时来取；下载完点「收下并清空」把它们从对方设备上删掉。',
+    qrAlt:'连接二维码', qrHint:'对方与这台设备连同一个 Wi-Fi，用相机或微信扫一扫',
+    qrCopy:'复制地址', close:'关闭',
+    addrFail:'连接已断开，请确认与 {peer} 在同一 Wi-Fi',
+    addedN:'已加入 {n} 个文件', stOk:'✓ 已送达', failed:'失败', stPending:'待传',
+    sumFiles:'{n} 个文件 · {size}',
+    uploading:'上传中…', uploadEmpty:'选择文件后上传',
+    uploadAll:'✓ 全部已送达 · 传下一批', uploadSome:'上传 {n} 个文件',
+    alreadyThere:'这批文件都已经在 {peer} 上了',
+    failRetry:'{n} 个失败，点它们可移除后重试', sentN:'{n} 个文件已送到 {peer}',
+    netFail:'网络中断', listCleared:'已清空列表',
+    nChars:'{n} 字', emptyContent:'内容为空', sending:'发送中…',
+    sentClip:'已发到 {peer} · {n} 字', sendFail:'发送失败：{msg}',
+    gateMac:'点开菜单栏的本应用，勾上「允许对方读取剪贴板」',
+    gateOther:'在本页下方勾上「允许对方读取本机剪贴板」',
+    clipAllowed:'{peer} 已允许读取。点「读取」拿它此刻的剪贴板（一次性，不进队列）。',
+    clipDenied:'{peer} 上还没允许。{hint}，再回来点「读取」。',
+    clipDeniedBr:'{peer} 上还没允许读取。<br>{hint}，再回来点「读取」。',
+    reading:'读取中…', clipReading:'正在读取 {peer} 剪贴板…',
+    gotClip:'已读到 {peer} 剪贴板', deniedToast:'{peer} 上还没允许读取剪贴板',
+    readFail:'读取失败：{msg}', loadFail:'读取失败',
+    clipEmpty:'{peer} 剪贴板现在是空的。',
+    copyDev:'复制到手机', copiedN:'已复制 {n} 字', copyManual:'请长按上方文字手动复制',
+    justNow:'刚刚', minAgo:'{n} 分钟前', hourAgo:'{n} 小时前', dateFmt:'{m}月{d}日',
+    obNone:'{peer} 还没发东西过来', nPending:'{n} 项待取', none:'暂无',
+    copyable:'可复制', collapse:'收起', view:'查看', download:'下载', copyAll:'复制全文',
+    obFail:'读取失败，确认与 {peer} 在同一 Wi-Fi',
+    queueEmpty:'队列是空的',
+    ackConfirm:'将从 {peer} 上删掉这 {n} 项待发内容，确认都已经收到了？',
+    acking:'清空中…', ackedN:'已收下 {n} 项', ackFail:'清空失败：{msg}',
+    freshOne:'{peer} 发来 {name}', freshN:'{peer} 发来 {n} 项',
+    recentNone:'还没有收到任何文件', nItems:'{n} 项', inboxNone:'还没有收到文件',
+    outboxEmpty:'发件箱是空的 —— 拖文件进来，或点上方选择',
+    queuedN:'{n} 个文件已放进发件箱', queuedFail:'（{n} 个失败）',
+    clipPrompt:'把要发送的文字粘贴到这里（会作为文本文件放进发件箱）',
+    clipPrefix:'剪贴板-', queuedClip:'已放进发件箱 · {n} 字',
+    openFail:'打开失败',
+    outboxClearConfirm:'清空发件箱？对方还没取走的那些会被删掉。',
+    clearedN:'已清空 {n} 项', clearFailMsg:'清空失败：{msg}', setFail:'设置失败：{msg}',
+    addrCopied:'已复制地址', addrCopyFail:'复制失败，请手动选中地址',
+    clipLogConfirm:'清空全部传文字历史？\n记录只保留最近 200 条，清空后不可恢复。',
+    clipLogCleared:'已清空文字记录', clearFail:'清空失败',
+    quitConfirm:'退出后服务会停止，其他设备就传不进来了。确定退出？',
+    stoppedHtml:'服务已停止。<br>重新启动应用即可恢复。', quitFail:'退出失败',
+    peerDefault:'对方', appDefault:'互传',
+  },
+  en: {
+    langBtn:'中文', hostPill:'Host', connecting:'Connecting…', loading:'Loading…',
+    inbox:'Inbox', outbox:'Outbox', openDir:'Open Folder',
+    coutDrop:'Drag files here, or click to browse<br>Items stay queued until the other device opens this page to pick them up',
+    sendClipText:'Send Clipboard Text', clearOutbox:'Clear Outbox',
+    clipWriteLbl:'Auto-copy incoming text to local clipboard',
+    clipReadLbl:'Allow peer to read local clipboard',
+    showQR:'Show QR Code', userGuide:'User Guide', clearClipLog:'Clear Text History', quit:'Quit',
+    tabFiles:'Files', tabText:'Text', tabRecv:'Receive',
+    dropT:'Tap to choose files', dropS:'Multiple selection · drag & drop from other apps too',
+    removeAll:'Remove All', recentRecv:'Recently Received', recentEmpty0:'Expand to load…',
+    clipPlaceholder:'Long-press here → paste; text is sent to {peer} instantly',
+    autoSendChip:'Auto-sends after paste', sendTo:'Send to {peer}', peerClipTitle:"{peer}'s Clipboard",
+    clipNow:'Read', clipGate0:'Checking switch state…', zipAll:'Zip All', recvClear:'Received & Clear',
+    obLoading:'Loading…',
+    obHint:'Items from {peer} wait in a queue until you pick them up; after downloading, tap "Received & Clear" to delete them from the peer device.',
+    qrAlt:'QR code', qrHint:'Peer on the same Wi-Fi — scan with Camera or WeChat',
+    qrCopy:'Copy Address', close:'Close',
+    addrFail:'Disconnected — make sure you are on the same Wi-Fi as {peer}',
+    addedN:'Added {n} file(s)', stOk:'✓ Delivered', failed:'Failed', stPending:'Pending',
+    sumFiles:'{n} file(s) · {size}',
+    uploading:'Uploading…', uploadEmpty:'Choose files to upload',
+    uploadAll:'✓ All delivered · Send next batch', uploadSome:'Upload {n} file(s)',
+    alreadyThere:'These files are already on {peer}',
+    failRetry:'{n} failed — tap them to remove and retry', sentN:'{n} file(s) sent to {peer}',
+    netFail:'Network error', listCleared:'List cleared',
+    nChars:'{n} chars', emptyContent:'Nothing to send', sending:'Sending…',
+    sentClip:'Sent to {peer} · {n} chars', sendFail:'Send failed: {msg}',
+    gateMac:'open this app from the menu bar and enable "Allow peer to read clipboard"',
+    gateOther:'tick "Allow peer to read local clipboard" below on this page',
+    clipAllowed:'{peer} allows reading. Tap "Read" to fetch its current clipboard (one-shot, not queued).',
+    clipDenied:'Not allowed on {peer} yet. {hint}, then come back and tap "Read".',
+    clipDeniedBr:'Not allowed on {peer} yet.<br>{hint}, then come back and tap "Read".',
+    reading:'Reading…', clipReading:"Reading {peer}'s clipboard…",
+    gotClip:'Clipboard from {peer} received', deniedToast:'Clipboard reading not allowed on {peer} yet',
+    readFail:'Read failed: {msg}', loadFail:'Load failed',
+    clipEmpty:"{peer}'s clipboard is empty.",
+    copyDev:'Copy to This Device', copiedN:'Copied {n} chars', copyManual:'Long-press the text above to copy manually',
+    justNow:'just now', minAgo:'{n} min ago', hourAgo:'{n} h ago', dateFmt:'{m}/{d}',
+    obNone:'Nothing from {peer} yet', nPending:'{n} item(s) waiting', none:'None',
+    copyable:'text', collapse:'Collapse', view:'View', download:'Download', copyAll:'Copy All',
+    obFail:'Load failed — check you are on the same Wi-Fi as {peer}',
+    queueEmpty:'Queue is empty',
+    ackConfirm:"This will delete {n} queued item(s) from {peer}. Confirm you've received them all?",
+    acking:'Clearing…', ackedN:'Received {n} item(s)', ackFail:'Clear failed: {msg}',
+    freshOne:'New from {peer}: {name}', freshN:'New from {peer}: {n} item(s)',
+    recentNone:'No files received yet', nItems:'{n} item(s)', inboxNone:'No files received yet',
+    outboxEmpty:'Outbox is empty — drop files here or click above to browse',
+    queuedN:'{n} file(s) queued in outbox', queuedFail:' ({n} failed)',
+    clipPrompt:'Paste the text to send (it will be queued as a .txt file in the outbox)',
+    clipPrefix:'Clipboard-', queuedClip:'Queued in outbox · {n} chars',
+    openFail:'Failed to open',
+    outboxClearConfirm:'Clear the outbox? Items not yet picked up will be deleted.',
+    clearedN:'Cleared {n} item(s)', clearFailMsg:'Clear failed: {msg}', setFail:'Failed to save: {msg}',
+    addrCopied:'Address copied', addrCopyFail:'Copy failed — select the address manually',
+    clipLogConfirm:'Clear all text history?\nOnly the last 200 entries are kept; this cannot be undone.',
+    clipLogCleared:'Text history cleared', clearFail:'Clear failed',
+    quitConfirm:'Quitting stops the service; other devices will no longer be able to transfer. Quit now?',
+    stoppedHtml:'Service stopped.<br>Restart the app to resume.', quitFail:'Quit failed',
+    peerDefault:'Peer', appDefault:'Relay',
+  },
+  };
+  let LANG = 'zh';
+  try{
+    LANG = localStorage.getItem('fr-lang')
+        || ((navigator.language || 'zh').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en');
+  }catch(e){}
+
+  function tt(key, vars){
+    const d = STR[LANG] || STR.zh;
+    let s = (key in d) ? d[key] : (STR.zh[key] || key);
+    if(vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+    return s;
+  }
+  const TP = (key, extra) => tt(key, Object.assign({ peer: PEER }, extra || {}));
+
+  function applyLang(){
+    document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tt(el.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = tt(el.dataset.i18nHtml); });
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = TP(el.dataset.i18nPh); });
+    document.querySelectorAll('[data-i18n-alt]').forEach(el => { el.alt = tt(el.dataset.i18nAlt); });
+    const lb = $('langBtn'); if(lb) lb.textContent = tt('langBtn');
+  }
+
+  /* ================= 设备身份 =================
+     页面上凡是提到「对面那台机器」的地方，文案全都从这里取，HTML 里不写死平台名。
+     这就是整套通用化改造的落点：同一份页面要在 macOS / Windows / Linux 上都说得通。
+     默认值用「对方」—— 状态还没拿到时也不会出现「从  收」这种破句。 */
+  let PEER = tt('peerDefault');   // 对端设备名，如 MacBook-Pro / DESKTOP-ABC123
+  let APP  = tt('appDefault');    // 应用名，服务端可用 APP_NAME 环境变量覆盖
+  // 兜底默认值不定格：/status 没提供过真实值时，每次渲染都按当前语言重算，
+  // 否则启动时按英文取了 'Peer'，切到中文会留下「Peer 剪贴板」这种混排。
+  let peerIsReal = false, appIsReal = false;
+  let HOSTKIND = '';          // 'mac' | 'win' | 'linux' —— 宿主平台，用于给出平台相关的指引
+  const isMacHost = () => HOSTKIND === 'mac';
+
+  // 宿主机模式：从本机浏览器（localhost）打开，说明这台机器就是服务端，显示管理控制台；
+  // 从别的设备打开，说明是「对方」，显示移动端界面。两套 UI 在同一份文件里。
+  const HOSTMODE = ['localhost', '127.0.0.1', '::1', '[::1]'].indexOf(location.hostname) >= 0;
+  if(HOSTMODE) document.body.classList.add('hostmode');
+
+  // 「去哪儿开剪贴板读取」这个指引必须随宿主平台变 —— Windows / Linux 根本没有菜单栏，
+  // 照抄 macOS 的说法会让人照着做却找不到那个入口，然后以为功能坏了。
+  const clipGateHint = () => isMacHost() ? tt('gateMac') : tt('gateOther');
+
+  function applyIdentity(){
+    if(!peerIsReal) PEER = tt('peerDefault');
+    if(!appIsReal)  APP  = tt('appDefault');
+    document.title = APP;
+    $('appTitle').textContent = APP;
+    document.querySelectorAll('[data-peer]').forEach(el => { el.textContent = PEER; });
+    // 页签保持短文案「从对方收」：主机名可能很长（如 my-Mac-mini.local），塞进页签必然溢出；
+    // 对方身份由面板内的「{PEER} 剪贴板」标题与下方提示承载。
+    const ct = $('clipTitle');    if(ct) ct.textContent = TP('peerClipTitle');
+    const ta = $('clip');         if(ta) ta.placeholder = TP('clipPlaceholder');
+    const sc = $('sendClip');     if(sc && sc.textContent !== tt('sending')) sc.textContent = TP('sendTo');
+  }
+
+  // 身份取自 /status。拿不到也不阻塞页面 —— 继续用「对方」这个默认称呼。
+  function loadIdentity(){
+    return fetch('/status', {headers:auth({})})
+      .then(r => r.ok ? r.text() : '')
+      .then(t => {
+        const f = k => { const m = new RegExp('(?:^|\\n)' + k + '=([^\\n]*)').exec(t); return m ? m[1] : ''; };
+        const n = f('HOST'); if(n){ PEER = n; peerIsReal = true; }
+        const a = f('APP');  if(a){ APP  = a; appIsReal  = true; }
+        HOSTKIND = f('HOSTKIND');
+        applyIdentity();
+        return t;
+      })
+      .catch(() => { applyIdentity(); });   // 拿不到身份也要按当前语言渲染兜底文案
+  }
+
+  /* ---------------- 提示条 ---------------- */
+  let toastTimer;
+  function toast(msg, kind){
+    const el = $('toast');
+    el.textContent = msg;
+    el.className = 'toast show' + (kind ? ' ' + kind : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = 'toast'; }, 2600);
+  }
+
+  /* ---------------- 分页 ---------------- */
+  document.querySelectorAll('.tab').forEach(t => {
+    t.onclick = () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+      document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + t.dataset.pane));
+      if(t.dataset.pane === 'text') setTimeout(() => $('clip').focus({preventScroll:true}), 60);
+      // 切到收件页立刻刷一次，不用等下一个轮询周期
+      if(t.dataset.pane === 'recv'){ pollOutbox(); refreshClipGate(); }
+    };
+  });
+
+  /* ---------------- 头部：本机地址 ---------------- */
+  let ADDR = '';
+  function loadAddr(){
+    return fetch('/addr')
+      .then(r => r.text())
+      .then(t => { if(t.trim()){ ADDR = t.trim(); $('addr').textContent = ADDR; } })
+      .catch(() => {
+        $('dot').classList.add('off');
+        $('addr').textContent = TP('addrFail');
+      });
+  }
+
+  /* ---------------- 工具 ---------------- */
+  const human = b => b < 1024 ? b + ' B'
+                  : b < 1048576 ? (b/1024).toFixed(b < 10240 ? 1 : 0) + ' KB'
+                  : (b/1048576).toFixed(b < 10485760 ? 1 : 0) + ' MB';
+  const extOf = n => {
+    const m = /\.([A-Za-z0-9]{1,5})$/.exec(n);
+    return m ? m[1].toUpperCase() : 'FILE';
+  };
+
+  /* ================= 传文件 ================= */
+  let picked = [];          // {file, url, node, bar, st}
+
+  function addFiles(list){
+    // 用 Array.from 而不是 [...list]：前者只要求 length+索引，老的 WebView 也能吃
+    const incoming = Array.from(list || []);
+    if(!incoming.length) return;
+    for(const f of incoming){
+      let url = '';
+      if(f.type && f.type.startsWith('image/')){ try{ url = URL.createObjectURL(f); }catch(e){} }
+      picked.push({file:f, url:url, node:null, bar:null, st:null});
+    }
+    render();
+    toast(tt('addedN', {n: incoming.length}));
+  }
+
+  function removeAt(i){
+    const it = picked[i];
+    if(!it || it.busy) return;
+    if(it.url) URL.revokeObjectURL(it.url);
+    picked.splice(i, 1);
+    render();
+  }
+
+  function render(){
+    const box = $('items'), list = $('list');
+    box.innerHTML = '';
+    if(!picked.length){ list.hidden = true; }
+    else {
+      list.hidden = false;
+      picked.forEach((it, i) => {
+        const row = document.createElement('div');
+        // 状态 class 必须在这里重建 —— render() 会整体重排 DOM，不还原 class 的话进度条会消失
+        row.className = 'item' + (it.busy ? ' busy' : '')
+                      + (it.done === 'ok' ? ' ok' : '') + (it.done === 'bad' ? ' bad' : '');
+
+        const th = document.createElement('div');
+        th.className = 'thumb';
+        // blob: URL 不能过 CSS.escape（会转义掉 : 和 /，URL 直接失效），用引号包住即可
+        if(it.url) th.style.backgroundImage = 'url("' + it.url + '")';
+        else th.textContent = extOf(it.file.name);
+        row.appendChild(th);
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const nm = document.createElement('div');
+        nm.className = 'nm'; nm.textContent = it.file.name;
+        const sz = document.createElement('div');
+        sz.className = 'sz'; sz.textContent = human(it.file.size);
+        const bar = document.createElement('div');
+        bar.className = 'pbar';
+        const fill = document.createElement('i');
+        bar.appendChild(fill);
+        meta.appendChild(nm); meta.appendChild(sz); meta.appendChild(bar);
+        row.appendChild(meta);
+
+        const st = document.createElement('div');
+        st.className = 'st';
+        st.textContent = it.done === 'ok'  ? tt('stOk')
+                       : it.done === 'bad' ? '✗ ' + (it.why || tt('failed'))
+                       : it.busy           ? (it.pct || 0) + '%'
+                       :                     tt('stPending');
+        row.appendChild(st);
+
+        // 未在传输中的行点一下即移除
+        if(!it.busy) row.onclick = () => removeAt(i);
+
+        it.node = row; it.bar = fill; it.st = st;
+        box.appendChild(row);
+      });
+    }
+    const total = picked.reduce((s, x) => s + x.file.size, 0);
+    const doneN = picked.filter(x => x.done === 'ok').length;
+    $('sum').textContent = picked.length ? tt('sumFiles', {n: picked.length, size: human(total)}) : '—';
+
+    const btn = $('send'), busy = picked.some(x => x.busy);
+    if(busy)               { btn.disabled = true;  btn.textContent = tt('uploading'); }
+    else if(!picked.length){ btn.disabled = true;  btn.textContent = tt('uploadEmpty'); }
+    // 全部送达后按钮语义是「传下一批」：点它清空本轮队列并直接唤起选择器。
+    // 刻意不做「重传同一批」—— 服务端对同名文件会自动加 (1) 后缀，重传只会在对方那边堆副本
+    else if(doneN === picked.length){ btn.disabled = false; btn.textContent = tt('uploadAll'); }
+    else                   { btn.disabled = false; btn.textContent = tt('uploadSome', {n: picked.length - doneN}); }
+  }
+
+  // 只改状态，DOM 交给 render() 统一还原
+  function finish(it, done, why){
+    it.busy = false; it.done = done; it.why = why || '';
+    if(done === 'ok') it.pct = 100;
+  }
+
+  // 顺序上传：一次只走一个请求，手机上更稳，进度也看得清
+  function upload(){
+    const queue = picked.filter(x => !x.busy && x.done !== 'ok');
+    // 队列为空 = 这批全都送过了。别静默 return —— 任何入口点进来都得有反馈
+    if(!queue.length){ if(picked.length) toast(TP('alreadyThere')); return; }
+    render();
+    let i = 0, okN = 0, badN = 0;
+
+    (function next(){
+      if(i >= queue.length){
+        render();
+        if(badN) toast(tt('failRetry', {n: badN}), 'bad');
+        else     toast(tt('sentN', {n: okN, peer: PEER}), 'ok');
+        if(okN && navigator.vibrate) navigator.vibrate(12);
+        loadRecent();
+        return;
+      }
+      const it = queue[i++];
+      it.busy = true; it.done = null; it.why = ''; it.pct = 0;
+      render();
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/upload');
+      xhr.setRequestHeader('X-Filename', encodeURIComponent(it.file.name));
+      xhr.setRequestHeader('Content-Type', it.file.type || 'application/octet-stream');
+      if(TOKEN) xhr.setRequestHeader('X-Token', TOKEN);
+
+      xhr.upload.onprogress = e => {
+        if(!e.lengthComputable) return;
+        it.pct = Math.round(e.loaded / e.total * 100);
+        it.bar.style.width = it.pct + '%';
+        it.st.textContent = it.pct + '%';
+      };
+      xhr.onload = () => {
+        if(xhr.status === 200){ okN++; finish(it, 'ok'); }
+        else {
+          badN++;
+          let why = 'HTTP ' + xhr.status;
+          try{ const j = JSON.parse(xhr.responseText); if(j && j.error) why = j.error; }catch(e){}
+          finish(it, 'bad', why);
+        }
+        next();
+      };
+      xhr.onerror = () => { badN++; finish(it, 'bad', tt('netFail')); next(); };
+      xhr.send(it.file);
+    })();
+  }
+
+  $('file').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
+
+  // 全部送达时按钮语义切换为「传下一批」，与 render() 里那句文案保持一致
+  const allDelivered = () => picked.length > 0 && picked.every(x => x.done === 'ok' && !x.busy);
+  $('send').onclick = () => {
+    if(allDelivered()){
+      picked.forEach(x => x.url && URL.revokeObjectURL(x.url));
+      picked = []; render();
+      // 必须在用户手势的同一 tick 内唤起，放进 setTimeout 手机会拦掉不弹选择器
+      $('file').click();
+      return;
+    }
+    upload();
+  };
+  $('clear').onclick = () => {
+    picked.forEach(x => x.url && URL.revokeObjectURL(x.url));
+    picked = []; render(); toast(tt('listCleared'));
+  };
+
+  // 拖放（手机一般用不到，桌面浏览器方便）
+  const drop = $('drop');
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.add('hot');
+  }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.remove('hot');
+  }));
+  drop.addEventListener('drop', e => { if(e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
+
+  /* ================= 传文字 ================= */
+  const clip = $('clip');
+  function updateClip(){
+    $('cc').textContent = tt('nChars', {n: clip.value.length});
+    $('sendClip').disabled = !clip.value.trim();
+  }
+  clip.addEventListener('input', updateClip);
+
+  // 关键交互：长按 → 粘贴 是一次用户手势，网页能收到 paste 事件，于是直接发走
+  clip.addEventListener('paste', () => setTimeout(() => {
+    if(clip.value.trim()) sendClip(clip.value);
+  }, 0));
+
+  function sendClip(text){
+    text = (text || '').trim();
+    if(!text){ toast(tt('emptyContent'), 'bad'); return; }
+    const btn = $('sendClip');
+    btn.disabled = true; btn.textContent = tt('sending');
+    fetch('/clip', {method:'POST', body:text, headers:auth({})})
+      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r; })
+      .then(() => {
+        toast(tt('sentClip', {n: text.length, peer: PEER}), 'ok');
+        if(navigator.vibrate) navigator.vibrate(12);
+        clip.value = ''; updateClip();
+      })
+      .catch(e => toast(tt('sendFail', {msg: e.message}), 'bad'))
+      .then(() => { btn.textContent = TP('sendTo'); updateClip(); });
+  }
+  $('sendClip').onclick = () => sendClip(clip.value);
+  updateClip();
+
+  /* ================= 对方剪贴板（一次性读取） ================= */
+  // 和发件箱不是一回事：发件箱是对方主动投递、排队等取；这里每次点「读取」拿到的是对方
+  // 此刻的剪贴板，不进队列、不落盘。服务端默认禁止（剪贴板里可能有密码），靠开关哨兵
+  // 文件放行 —— 没放行时返 403，所以要给出「去哪儿开」的指引，不能只报个错。
+  let clipReading = false;
+  let clipHasResult = false;   // 已经读到内容后，别让状态刷新把结果冲掉
+  let lastClipText = null;     // 最近一次读到的剪贴板内容，切换语言时用它重放渲染
+
+  // 问一次 /status 里的 CLIPREAD，把「到底允许没允许」如实显示出来。
+  // 之前只写了静态文案「默认关闭」，对方明明放行了页面也照样这么说 —— 用户看到的就是
+  // 「开关点了没效果」。状态不查清楚，提示本身就是错的。
+  function refreshClipGate(){
+    if(clipHasResult) return;
+    fetch('/status', {headers:auth({})})
+      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(t => {
+        if(clipHasResult) return;
+        const on = /(^|\n)CLIPREAD=1(\n|$)/.test(t);
+        $('clipBody').innerHTML = on
+          ? '<div class="ob-empty">' + TP('clipAllowed') + '</div>'
+          : '<div class="ob-empty">' + tt('clipDenied', {peer: PEER, hint: clipGateHint()}) + '</div>';
+      })
+      .catch(() => { /* 状态查不到就保留原提示，不影响点「读取」 */ });
+  }
+
+  function readMacClip(){
+    if(clipReading) return;
+    const btn = $('clipNow'), box = $('clipBody');
+    clipReading = true; btn.disabled = true; btn.textContent = tt('reading');
+    box.innerHTML = '<div class="ob-empty">' + TP('clipReading') + '</div>';
+    fetch('/clip/now', {headers:auth({})})
+      .then(r => {
+        if(r.status === 403) throw new Error('DENIED');
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(t => { renderMacClip(t); toast(TP('gotClip'), 'ok'); })
+      .catch(e => {
+        if(e.message === 'DENIED'){
+          box.innerHTML = '<div class="ob-empty">' + tt('clipDeniedBr', {peer: PEER, hint: clipGateHint()}) + '</div>';
+          toast(TP('deniedToast'), 'bad');
+        }else{
+          box.innerHTML = '<div class="ob-empty">' + tt('readFail', {msg: e.message}) + '</div>';
+          toast(tt('readFail', {msg: e.message}), 'bad');
+        }
+      })
+      .then(() => { clipReading = false; btn.disabled = false; btn.textContent = tt('clipNow'); });
+  }
+
+  function renderMacClip(t){
+    clipHasResult = true;
+    lastClipText = t;
+    const box = $('clipBody');
+    box.innerHTML = '';
+    if(!t){
+      box.innerHTML = '<div class="ob-empty">' + TP('clipEmpty') + '</div>';
+      return;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'clip-out';
+    const pre = document.createElement('pre');
+    pre.textContent = t;                 // textContent，不是 innerHTML —— 剪贴板内容不可信
+    wrap.appendChild(pre);
+    const bar = document.createElement('div');
+    bar.className = 'row';
+    const b = document.createElement('button');
+    b.className = 'mini'; b.type = 'button'; b.textContent = tt('copyDev');
+    b.onclick = () => copyText(t,
+      () => toast(tt('copiedN', {n: t.length}), 'ok'),
+      () => { b.textContent = tt('copyManual'); });
+    bar.appendChild(b);
+    const n = document.createElement('span');
+    n.className = 'clip-n'; n.textContent = tt('nChars', {n: t.length});
+    bar.appendChild(n);
+    wrap.appendChild(bar);
+    box.appendChild(wrap);
+  }
+  $('clipNow').onclick = readMacClip;
+
+  /* ================= 从对方收（发件箱队列） ================= */
+  // 反向通道是「队列 + 拉取」：局域网 http 下浏览器没有被动接收的通道（Web Push 要
+  // HTTPS + Service Worker + FCM，SSE/WebSocket 同样要求页面常驻前台），所以这里只做
+  // 轮询 —— 页面打开着、或回到前台时来取一次。
+  const POLL_MS = 2500;
+  let obItems = [];        // 最近一次拉到的队列
+  const recentLoaded = {v: 0};   // 「最近收到」是否已加载过（refreshTexts 也会读，须先于启动段声明）
+  const obSeen = {};       // 提示过的条目，别重复 toast
+  const obOpen = {};       // 展开了全文的条目
+  const obCache = {};      // id -> 全文，避免每次重渲染都重新拉
+  let obFirst = true;      // 首次拉到的是历史遗留，不该刷提示
+
+  const obUrl = (n, extra) => '/outbox/' + encodeURIComponent(n) +
+    (TOKEN ? '?' + (extra ? extra + '&' : '') + 'token=' + encodeURIComponent(TOKEN)
+           : (extra ? '?' + extra : ''));
+  const zipUrl = () => '/outbox.zip' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : '');
+
+  function when(t){
+    const diff = Date.now() / 1000 - t;
+    if(diff < 60) return tt('justNow');
+    if(diff < 3600) return tt('minAgo', {n: Math.floor(diff / 60)});
+    if(diff < 86400) return tt('hourAgo', {n: Math.floor(diff / 3600)});
+    const d = new Date(t * 1000);
+    return tt('dateFmt', {m: d.getMonth() + 1, d: d.getDate()});
+  }
+
+  function renderOutbox(items){
+    obItems = items;
+    const badge = $('badge');
+    badge.textContent = items.length;
+    badge.hidden = !items.length;
+    $('obSum').textContent = items.length ? tt('nPending', {n: items.length}) : tt('none');
+    $('obZip').disabled = !items.length;
+    $('obClear').disabled = !items.length;
+
+    const box = $('obItems');
+    if(!items.length){ box.innerHTML = '<div class="ob-empty">' + TP('obNone') + '</div>'; return; }
+    box.innerHTML = '';
+
+    for(const it of items){
+      const row = document.createElement('div');
+      row.className = 'item tap';
+      const th = document.createElement('div');
+      th.className = 'thumb';
+      th.textContent = it.text ? 'TXT' : extOf(it.name);
+      row.appendChild(th);
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const nm = document.createElement('div');
+      nm.className = 'nm'; nm.textContent = it.name;
+      const sz = document.createElement('div');
+      sz.className = 'sz';
+      sz.textContent = human(it.size) + ' · ' + when(it.mtime) + (it.text ? ' · ' + tt('copyable') : '');
+      meta.appendChild(nm); meta.appendChild(sz);
+      row.appendChild(meta);
+
+      const toggle = () => { obOpen[it.id] = !obOpen[it.id]; renderOutbox(obItems); };
+      if(it.text){
+        const btn = document.createElement('button');
+        btn.className = 'mini acc'; btn.type = 'button';
+        btn.textContent = obOpen[it.id] ? tt('collapse') : tt('view');
+        btn.onclick = ev => { ev.stopPropagation(); toggle(); };
+        row.appendChild(btn);
+      }
+      const a = document.createElement('a');
+      a.className = 'dl'; a.href = obUrl(it.id); a.textContent = tt('download');
+      a.onclick = ev => ev.stopPropagation();
+      row.appendChild(a);
+      // 整行点一下 = 文本展开 / 文件下载，手机上比戳小按钮好点
+      row.onclick = () => { if(it.text) toggle(); else a.click(); };
+      box.appendChild(row);
+
+      if(it.text && obOpen[it.id]){
+        const more = document.createElement('div');
+        more.className = 'ob-more';
+        const pre = document.createElement('pre');
+        pre.textContent = tt('obLoading');
+        more.appendChild(pre);
+        box.appendChild(more);
+        loadObText(it, more, pre);
+      }
+    }
+  }
+
+  function loadObText(it, node, pre){
+    const show = t => {
+      pre.textContent = t;
+      const bar = document.createElement('div');
+      bar.className = 'row';
+      const b = document.createElement('button');
+      b.className = 'mini'; b.type = 'button'; b.textContent = tt('copyAll');
+      b.onclick = () => copyText(t,
+        () => toast(tt('copiedN', {n: t.length}), 'ok'),
+        () => { b.textContent = tt('copyManual'); });
+      bar.appendChild(b);
+      node.appendChild(bar);
+    };
+    if(obCache[it.id] !== undefined){ show(obCache[it.id]); return; }
+    fetch(obUrl(it.id, 'inline=1'), {headers:auth({})})
+      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(t => { obCache[it.id] = t; show(t); })
+      .catch(e => { pre.textContent = tt('readFail', {msg: e.message}); });
+  }
+
+  // 复制回退链：http 不是安全上下文，navigator.clipboard 多半直接不存在；
+  // execCommand 虽已废弃但没被移除，两条都不行才让用户长按手动复制
+  function copyText(text, onOk, onFail){
+    const legacy = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:-1000px;left:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, text.length);
+      let done = false;
+      try{ done = document.execCommand('copy'); }catch(e){ done = false; }
+      document.body.removeChild(ta);
+      if(done) onOk(); else onFail();
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(onOk).catch(legacy);
+    } else legacy();
+  }
+
+  function pollOutbox(){
+    // 后台标签的定时器会被浏览器节流（Chrome 对隐藏页面最慢 1 分钟一次），
+    // 与其假装还在轮询，不如直接跳过，靠 visibilitychange 回前台时补拉
+    if(document.visibilityState === 'hidden') return;
+    fetch('/outbox', {headers:auth({})})
+      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(j => {
+        const items = j.items || [];
+        const live = {};
+        items.forEach(x => { live[x.id] = 1; });
+        Object.keys(obSeen).forEach(k => { if(!live[k]) delete obSeen[k]; });
+        const fresh = items.filter(x => !obSeen[x.id]);
+        items.forEach(x => { obSeen[x.id] = 1; });
+        if(!obFirst && fresh.length){
+          toast(fresh.length === 1 ? TP('freshOne', {name: fresh[0].name}) : TP('freshN', {n: fresh.length}), 'ok');
+          if(navigator.vibrate) navigator.vibrate(14);
+        }
+        obFirst = false;
+        renderOutbox(items);
+      })
+      .catch(() => {
+        if(!obItems.length) $('obItems').innerHTML = '<div class="ob-empty">' + TP('obFail') + '</div>';
+      });
+  }
+
+  $('obZip').onclick = () => {
+    if(!obItems.length){ toast(tt('queueEmpty'), 'bad'); return; }
+    const a = document.createElement('a');
+    a.href = zipUrl(); a.download = '';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+
+  $('obClear').onclick = () => {
+    if(!obItems.length){ toast(tt('queueEmpty'), 'bad'); return; }
+    if(!window.confirm(tt('ackConfirm', {peer: PEER, n: obItems.length}))) return;
+    const btn = $('obClear');
+    btn.disabled = true; btn.textContent = tt('acking');
+    fetch('/outbox/ack', {method:'POST', headers:auth({'Content-Type':'application/json'}), body:'{}'})
+      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(j => {
+        toast(tt('ackedN', {n: j.removed}), 'ok');
+        for(const k in obOpen) delete obOpen[k];
+        for(const k in obCache) delete obCache[k];
+        pollOutbox();
+      })
+      .catch(e => toast(tt('ackFail', {msg: e.message}), 'bad'))
+      .then(() => { btn.textContent = tt('recvClear'); });
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') pollOutbox();
+  });
+
+  setInterval(pollOutbox, POLL_MS);
+
+  /* ================= 启动 =================
+     先取身份、再起轮询：页面文案依赖 PEER，顺序反了会先显示「对方」再跳成真实设备名。 */
+  // 语言切换后重放所有动态渲染 —— 静态部分 applyLang 已覆盖，这里是 JS 生成的部分
+  let refreshConsoleTexts = null;   // initConsole() 里赋值；控制台列表需要重新拉取
+  function refreshTexts(){
+    applyIdentity();
+    render();
+    updateClip();
+    renderOutbox(obItems);
+    if(clipHasResult){ if(lastClipText !== null) renderMacClip(lastClipText); }
+    else refreshClipGate();
+    if(recentLoaded.v) loadRecent();
+    if(HOSTMODE && refreshConsoleTexts) refreshConsoleTexts();
+  }
+  $('langBtn').onclick = () => {
+    LANG = LANG === 'zh' ? 'en' : 'zh';
+    try{ localStorage.setItem('fr-lang', LANG); }catch(e){}
+    applyLang();
+    refreshTexts();
+  };
+  applyLang();
+
+  loadIdentity().then(() => {
+    loadAddr();
+    refreshClipGate();
+    pollOutbox();
+    if(HOSTMODE) initConsole();
+  });
+
+  /* ================= 最近收到 ================= */
+  // recentLoaded 声明在上方状态区（refreshTexts 会在启动段之前被调用，不能放这里）
+  function loadRecent(){
+    fetch('/list').then(r => r.json()).then(j => {
+      const ul = $('recent');
+      const files = (j.files || []).slice(0, 6);
+      if(!files.length){ ul.innerHTML = '<li class="empty">' + tt('recentNone') + '</li>'; return; }
+      ul.innerHTML = '';
+      for(const f of files){
+        const li = document.createElement('li');
+        const a = document.createElement('span'); a.textContent = f.name;
+        const b = document.createElement('span'); b.textContent = human(f.size);
+        li.appendChild(a); li.appendChild(b); ul.appendChild(li);
+      }
+    }).catch(() => { $('recent').innerHTML = '<li class="empty">' + tt('loadFail') + '</li>'; });
+  }
+  $('recvbox').addEventListener('toggle', () => { if($('recvbox').open && !recentLoaded.v){ recentLoaded.v = 1; loadRecent(); } });
+
+  /* ================= 桌面控制台（仅宿主机本机访问时启用） =================
+     这一页承接原来 macOS 菜单栏的全部操作：发送剪贴板、添加文件到发件箱、打开两个目录、
+     清空发件箱、两个剪贴板开关、二维码、使用说明、退出服务。
+     它不是「菜单栏的替代品」这么简单 —— Windows / Linux 根本没有菜单栏，少了它，
+     「电脑 → 电脑」就只剩单向：一方能传，另一方却没有主动发件的入口。 */
+
+  function consoleErr(box, msg){
+    box.innerHTML = '<div class="ob-empty">' + msg + '</div>';
+  }
+
+  function initConsole(){
+
+    /* --- 收件箱：别人传过来的文件 --- */
+    function loadInbox(){
+      const box = $('cinItems');
+      fetch('/list').then(r => r.json()).then(j => {
+        const files = j.files || [];
+        $('cinSum').textContent = files.length ? tt('nItems', {n: files.length}) : tt('none');
+        if(!files.length){ consoleErr(box, tt('inboxNone')); return; }
+        box.innerHTML = '';
+        for(const f of files.slice(0, 60)){
+          const row = document.createElement('div');
+          row.className = 'item';
+          const th = document.createElement('div');
+          th.className = 'thumb'; th.textContent = extOf(f.name);
+          row.appendChild(th);
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          const nm = document.createElement('div');
+          nm.className = 'nm'; nm.textContent = f.name;
+          const sz = document.createElement('div');
+          sz.className = 'sz'; sz.textContent = human(f.size) + ' · ' + when(f.mtime);
+          meta.appendChild(nm); meta.appendChild(sz);
+          row.appendChild(meta);
+          box.appendChild(row);
+        }
+      }).catch(() => consoleErr(box, tt('loadFail')));
+    }
+
+    /* --- 发件箱：放进队列等对方来取 --- */
+    function loadOutbox(){
+      const box = $('coutItems');
+      fetch('/outbox', {headers:auth({})}).then(r => r.json()).then(j => {
+        const items = j.items || [];
+        $('coutSum').textContent = items.length ? tt('nPending', {n: items.length}) : tt('none');
+        $('coutClear').disabled = !items.length;
+        if(!items.length){ consoleErr(box, tt('outboxEmpty')); return; }
+        box.innerHTML = '';
+        for(const it of items){
+          const row = document.createElement('div');
+          row.className = 'item';
+          const th = document.createElement('div');
+          th.className = 'thumb'; th.textContent = it.text ? 'TXT' : extOf(it.name);
+          row.appendChild(th);
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          const nm = document.createElement('div');
+          nm.className = 'nm'; nm.textContent = it.name;
+          const sz = document.createElement('div');
+          sz.className = 'sz'; sz.textContent = human(it.size) + ' · ' + when(it.mtime);
+          meta.appendChild(nm); meta.appendChild(sz);
+          row.appendChild(meta);
+          const a = document.createElement('a');
+          a.className = 'dl'; a.href = obUrl(it.id); a.textContent = tt('download');
+          row.appendChild(a);
+          box.appendChild(row);
+        }
+      }).catch(() => consoleErr(box, tt('loadFail')));
+    }
+
+    /* --- 放进发件箱：拖拽与选择文件 --- */
+    function pushToOutbox(files){
+      const list = Array.from(files || []);
+      if(!list.length) return;
+      let i = 0, okN = 0, badN = 0;
+      (function step(){
+        if(i >= list.length){
+          toast(tt('queuedN', {n: okN}) + (badN ? tt('queuedFail', {n: badN}) : ''), badN ? 'bad' : 'ok');
+          loadOutbox();
+          return;
+        }
+        const f = list[i++];
+        // 直接 POST 到 /outbox。宿主机自己发的，重名就**覆盖** —— 发件箱的语义是
+        // 「最新这份要发过去」，不像收件箱那样加 (1) 后缀，否则对方会看到一串看起来一样的条目。
+        fetch('/outbox', {
+          method:'POST', body:f,
+          headers: auth({
+            'X-Filename': encodeURIComponent(f.name),
+            'Content-Type': f.type || 'application/octet-stream',
+          }),
+        }).then(r => { r.ok ? okN++ : badN++; })
+          .catch(() => { badN++; })
+          .then(step);
+      })();
+    }
+
+    const cdrop = $('coutDrop');
+    const coutFile = $('coutFile');
+    coutFile.onchange = e => { pushToOutbox(e.target.files); e.target.value = ''; };
+    ['dragenter','dragover'].forEach(ev => cdrop.addEventListener(ev, e => {
+      e.preventDefault(); cdrop.classList.add('hot');
+    }));
+    ['dragleave','drop'].forEach(ev => cdrop.addEventListener(ev, e => {
+      e.preventDefault(); cdrop.classList.remove('hot');
+    }));
+    cdrop.addEventListener('drop', e => { if(e.dataTransfer) pushToOutbox(e.dataTransfer.files); });
+
+    /* --- 把本机剪贴板文字放进发件箱 --- */
+    $('coutClip').onclick = () => {
+      function send(t){
+        t = (t || '').trim();
+        if(!t){ toast(tt('emptyContent'), 'bad'); return; }
+        const d = new Date(), p = n => (n < 10 ? '0' : '') + n;
+        const name = tt('clipPrefix') + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate())
+                   + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '.txt';
+        fetch('/outbox', {
+          method:'POST', body:t,
+          headers: auth({'X-Filename': encodeURIComponent(name),
+                         'Content-Type':'text/plain; charset=utf-8'}),
+        }).then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); })
+          .then(() => { toast(tt('queuedClip', {n: t.length}), 'ok'); loadOutbox(); })
+          .catch(e => toast(tt('sendFail', {msg: e.message}), 'bad'));
+      }
+      function ask(){
+        const t = window.prompt(tt('clipPrompt'));
+        if(t !== null) send(t);
+      }
+      // 优先读浏览器剪贴板 —— 用户点的这一下就是授权手势。http 不是安全上下文时
+      // navigator.clipboard 常常直接不存在，那就退回输入框让用户自己粘贴。
+      if(navigator.clipboard && navigator.clipboard.readText){
+        navigator.clipboard.readText().then(send).catch(ask);
+      }else ask();
+    };
+
+    /* --- 打开目录 / 清空发件箱 --- */
+    $('cinOpen').onclick  = () => fetch('/open?dir=inbox').catch(() => toast(tt('openFail'), 'bad'));
+    $('coutOpen').onclick = () => fetch('/open?dir=outbox').catch(() => toast(tt('openFail'), 'bad'));
+    $('coutClear').onclick = () => {
+      if(!window.confirm(tt('outboxClearConfirm'))) return;
+      fetch('/outbox/ack', {method:'POST', headers:auth({'Content-Type':'application/json'}), body:'{}'})
+        .then(r => r.json())
+        .then(j => { toast(tt('clearedN', {n: j.removed}), 'ok'); loadOutbox(); pollOutbox(); })
+        .catch(e => toast(tt('clearFailMsg', {msg: e.message}), 'bad'));
+    };
+
+    /* --- 两个剪贴板开关（仍走哨兵文件，改完立刻生效、不用重启） --- */
+    function loadFlags(){
+      fetch('/status', {headers:auth({})}).then(r => r.text()).then(t => {
+        const on = k => new RegExp('(?:^|\\n)' + k + '=1(?:\\n|$)').test(t);
+        $('cClipRead').checked  = on('CLIPREAD');
+        $('cClipWrite').checked = on('CLIPWRITE');
+      }).catch(() => {});
+    }
+    function putFlags(patch){
+      fetch('/flags', {
+        method:'POST', headers:auth({'Content-Type':'application/json'}), body:JSON.stringify(patch),
+      }).then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(j => { $('cClipRead').checked = !!j.clip_read; $('cClipWrite').checked = !!j.clip_write; })
+        .catch(e => { toast(tt('setFail', {msg: e.message}), 'bad'); loadFlags(); });
+    }
+    $('cClipRead').onchange  = e => putFlags({clip_read: e.target.checked});
+    $('cClipWrite').onchange = e => putFlags({clip_write: e.target.checked});
+
+    /* --- 二维码 --- */
+    function showQR(){
+      $('qrImg').src = '/qr.png?px=520&t=' + Date.now();   // 换 Wi-Fi 后地址会变，每次重取
+      $('qrAddr').textContent = ADDR || '—';
+      $('qrmask').classList.add('on');
+    }
+    $('cQR').onclick = showQR;
+    $('addr').style.cursor = 'pointer';
+    $('addr').onclick = showQR;
+    $('qrClose').onclick = () => $('qrmask').classList.remove('on');
+    $('qrmask').onclick = e => { if(e.target === $('qrmask')) $('qrmask').classList.remove('on'); };
+    $('qrCopy').onclick = () => copyText(ADDR,
+      () => toast(tt('addrCopied'), 'ok'),
+      () => toast(tt('addrCopyFail'), 'bad'));
+
+    /* --- 使用说明 / 清空文字记录 / 退出服务 --- */
+    // 手册跟随界面语言：中文 /doc，英文 /manual-en.html
+    $('cDoc').onclick = () => window.open(LANG === 'zh' ? '/doc' : '/manual-en.html', '_blank');
+    $('cClipClear').onclick = () => {
+      // 传文字历史可能含密码/验证码这类敏感内容，确认框里把后果说全
+      if(!window.confirm(tt('clipLogConfirm'))) return;
+      fetch('/cliplog/clear', {method:'POST'})
+        .then(r => { if(!r.ok) throw 0; toast(tt('clipLogCleared')); })
+        .catch(() => toast(tt('clearFail'), 'bad'));
+    };
+    $('cQuit').onclick = () => {
+      if(!window.confirm(tt('quitConfirm'))) return;
+      fetch('/shutdown', {method:'POST'}).then(() => {
+        document.body.innerHTML =
+          '<div style="padding:56px 24px;text-align:center;font:15px/1.8 system-ui,sans-serif;color:#888">'
+          + tt('stoppedHtml') + '</div>';
+      }).catch(() => toast(tt('quitFail'), 'bad'));
+    };
+
+    loadInbox();
+    loadOutbox();
+    loadFlags();
+    // 语言切换时重放控制台两个列表的文案
+    refreshConsoleTexts = () => { loadInbox(); loadOutbox(); };
+    // 控制台自己也要跟着刷新：别人传文件过来时，收件箱列表得自动冒出来
+    setInterval(() => {
+      if(document.visibilityState === 'visible'){ loadInbox(); loadOutbox(); }
+    }, 4000);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
