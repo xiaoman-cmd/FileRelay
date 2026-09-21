@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FileRelay — LAN file transfer, zero install on the phone side · 局域网互传</title>
+<meta name="description" content="FileRelay: two-way file & text transfer between phone and computer over local Wi-Fi. Zero install on the guest side — scan a QR code and go. 局域网手机电脑双向直传，手机侧零安装。">
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1b1b1f; --muted:#6a6a73; --line:#e5e5ea;
+    --card:#f7f7fa; --accent:#5B3FE0; --accent-soft:#efeaff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#131316; --fg:#f1f1f5; --muted:#9b9ba4; --line:#2b2b32;
+      --card:#1b1b20; --accent:#a897ff; --accent-soft:#241f3d;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.72 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+  }
+  html[lang="zh"] .en{display:none}
+  html[lang="en"] .zh{display:none}
+  .wrap{max-width:880px; margin:0 auto; padding:0 24px}
+  header{padding:22px 0; border-bottom:1px solid var(--line)}
+  .bar{display:flex; align-items:center; gap:14px}
+  .logo{font-weight:700; font-size:17px; letter-spacing:-.01em}
+  .logo span{color:var(--accent)}
+  nav{margin-left:auto; display:flex; gap:16px; align-items:center; font-size:14px}
+  nav a{color:var(--muted); text-decoration:none}
+  nav a:hover{color:var(--accent)}
+  #langBtn{
+    border:1px solid var(--line); background:var(--card); color:var(--fg);
+    border-radius:999px; padding:3px 12px; font-size:13px; cursor:pointer;
+  }
+  .hero{padding:72px 0 56px; text-align:center}
+  .badge{
+    display:inline-block; font-size:12px; letter-spacing:.06em; color:var(--accent);
+    background:var(--accent-soft); border-radius:999px; padding:4px 13px; margin-bottom:18px;
+  }
+  h1{font-size:38px; line-height:1.2; margin:0 0 14px; letter-spacing:-.02em}
+  .sub{color:var(--muted); font-size:16.5px; max-width:620px; margin:0 auto}
+  .cta{margin-top:30px; display:flex; gap:14px; justify-content:center; flex-wrap:wrap}
+  .btn{
+    display:inline-block; text-decoration:none; border-radius:10px; padding:11px 22px;
+    font-size:15px; font-weight:600;
+  }
+  .btn.primary{background:var(--accent); color:#fff}
+  .btn.ghost{border:1px solid var(--line); color:var(--fg); background:var(--card)}
+  h2{font-size:21px; margin:0 0 22px; letter-spacing:-.01em}
+  section{padding:46px 0; border-top:1px solid var(--line)}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px;
+  }
+  .card b{display:block; margin-bottom:5px}
+  .card p{margin:0; color:var(--muted); font-size:14px}
+  .shot{max-width:100%; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,.16); display:block; margin:8px auto 0}
+  .shotcap{text-align:center; color:var(--muted); font-size:13px; margin-top:12px}
+  ol{max-width:640px; margin:0 auto; padding-left:0; list-style:none; counter-reset:s}
+  ol li{
+    counter-increment:s; position:relative; background:var(--card); border:1px solid var(--line);
+    border-radius:12px; padding:14px 18px 14px 56px; margin:10px 0; text-align:left;
+  }
+  ol li::before{
+    content:counter(s); position:absolute; left:16px; top:15px; width:26px; height:26px;
+    border-radius:50%; background:var(--accent); color:#fff; font-size:13.5px; font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+  }
+  code{
+    background:var(--card); border-radius:5px; padding:1.5px 6px;
+    font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  pre{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:14px 16px; overflow-x:auto; text-align:left; max-width:640px; margin:0 auto 10px;
+    font:.86em/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  footer{border-top:1px solid var(--line); padding:26px 0 40px; color:var(--muted); font-size:13.5px; text-align:center}
+  footer a{color:var(--accent); text-decoration:none}
+  .warn{max-width:640px; margin:18px auto 0; color:var(--muted); font-size:13.5px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap bar">
+    <div class="logo">File<span>Relay</span></div>
+    <nav>
+      <a href="#features" class="en">Features</a><a href="#features" class="zh">特性</a>
+      <a href="#start" class="en">Quick Start</a><a href="#start" class="zh">快速开始</a>
+      <a href="src/manual-en.html" class="en">Guide</a><a href="src/使用手册.html" class="zh">手册</a>
+      <a href="https://github.com/xiaoman-cmd/FileRelay">GitHub</a>
+      <button id="langBtn" type="button">中文</button>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap hero">
+  <div class="badge en">LAN · No internet · No account · Open source (MIT)</div>
+  <div class="badge zh">局域网 · 无需联网 · 零账号 · 开源（MIT）</div>
+  <h1 class="en">Phone ⇄ Computer,<br>over your own Wi-Fi</h1>
+  <h1 class="zh">手机 ⇄ 电脑，<br>走你自己的 Wi-Fi</h1>
+  <p class="sub en">Two-way file &amp; text transfer on the local network. The guest side installs <strong>nothing</strong> — scan a QR code, the browser is the app.</p>
+  <p class="sub zh">局域网内文件与文字<strong>双向</strong>直传。访客侧<strong>零安装</strong> —— 扫码即用，浏览器就是 App。</p>
+  <div class="cta">
+    <a class="btn primary en" href="https://github.com/xiaoman-cmd/FileRelay/releases/download/v1.0/FileRelay.app.zip">Download for macOS</a>
+    <a class="btn primary zh" href="https://github.com/xiaoman-cmd/FileRelay/releases/download/v1.0/FileRelay.app.zip">下载 macOS 版</a>
+    <a class="btn ghost en" href="https://github.com/xiaoman-cmd/FileRelay">View on GitHub</a>
+    <a class="btn ghost zh" href="https://github.com/xiaoman-cmd/FileRelay">GitHub 仓库</a>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <h2 class="en">Features</h2>
+    <h2 class="zh">特性</h2>
+    <div class="grid">
+      <div class="card"><b class="en">Zero install for guests</b><p class="en">Android, iOS, tablets, another computer — anything with a browser. The host runs the service; guests just open the page.</p><b class="zh">访客零安装</b><p class="zh">安卓 / iOS / 平板 / 另一台电脑，有浏览器就行。服务跑在主机上，访客打开网页即可。</p></div>
+      <div class="card"><b class="en">Two-way transfer</b><p class="en">Phone uploads to the computer; the computer drops files into the outbox for the phone to pick up. Original names kept, never renamed.</p><b class="zh">双向传输</b><p class="zh">手机传电脑、电脑发手机（发件箱拖入即发）。文件按原名保存，不改名不压缩。</p></div>
+      <div class="card"><b class="en">Clipboard, both directions</b><p class="en">Two independent opt-in switches. Reading the host's clipboard is off by default — clipboards hold secrets.</p><b class="zh">双向剪贴板</b><p class="zh">两个方向独立开关。读取主机剪贴板默认关闭 —— 剪贴板里常有密码。</p></div>
+      <div class="card"><b class="en">Bilingual UI &amp; guides</b><p class="en">Chinese / English switchable in the app and on every page of both user guides.</p><b class="zh">中英双语</b><p class="zh">应用内一键切换中英，两份使用手册全双语。</p></div>
+      <div class="card"><b class="en">Cross-platform host</b><p class="en">macOS menu bar app included; Windows &amp; Linux run the same zero-dependency Python server.</p><b class="zh">主机跨平台</b><p class="zh">macOS 菜单栏应用；Windows / Linux 跑同一个零依赖 Python 服务。</p></div>
+      <div class="card"><b class="en">Private by design</b><p class="en">No cloud, no account, no telemetry — traffic never leaves your router. Optional access token for public Wi-Fi.</p><b class="zh">隐私优先</b><p class="zh">无云、无账号、无遥测 —— 流量不出路由器。公共 Wi-Fi 可开访问口令。</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <figure>
+      <img class="shot" src="src/ui-console-en.png" alt="FileRelay host console — inbox and outbox side by side">
+      <figcaption class="shotcap en">The host console — receive on the left, send on the right, drop files to send</figcaption>
+      <figcaption class="shotcap zh">主机控制台 —— 左收件、右发送，拖文件进发件箱即发送</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <h2 class="en">Quick Start</h2>
+    <h2 class="zh">快速开始</h2>
+    <ol>
+      <li><b class="en">Start the host</b> — macOS: open the app; Windows / Linux: <code>./scripts/start.sh</code> or <code>start.bat</code> (Python 3.8+, no dependencies).</li>
+      <li class="zh"><b>启动主机</b> —— macOS 打开应用；Windows / Linux 运行 <code>./scripts/start.sh</code> 或 <code>start.bat</code>（需 Python 3.8+，零依赖）。</li>
+      <li><b class="en">Show the QR code</b> — menu bar icon or the local console at <code>http://127.0.0.1:8765/</code>.</li>
+      <li class="zh"><b>显示二维码</b> —— 菜单栏图标，或本机控制台 <code>http://127.0.0.1:8765/</code>。</li>
+      <li><b class="en">Scan &amp; go</b> — phone on the same Wi-Fi scans the code; files and text flow both ways.</li>
+      <li class="zh"><b>扫码即用</b> —— 手机连同一 Wi-Fi 扫码，文件文字双向直传。</li>
+    </ol>
+    <p class="warn en">⚠️ Designed for trusted local networks only (plain HTTP by design). On public Wi-Fi, enable the access token: <code>TOKEN=auto</code>. For cross-network use, bring your own tunnel (e.g. Tailscale).</p>
+    <p class="warn zh">⚠️ 仅限可信局域网使用（明文 HTTP 是刻意设计）。公共 Wi-Fi 请开启口令 <code>TOKEN=auto</code>；跨网段请自备隧道（如 Tailscale）。</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="en">MIT License · <a href="https://github.com/xiaoman-cmd/FileRelay">GitHub</a> · <a href="src/manual-en.html">User Guide (EN)</a> · <a href="src/使用手册.html">使用手册（中文）</a></span>
+    <span class="zh">MIT 协议 · <a href="https://github.com/xiaoman-cmd/FileRelay">GitHub</a> · <a href="src/使用手册.html">使用手册</a> · <a href="src/manual-en.html">User Guide</a></span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var html = document.documentElement;
+  var saved = null;
+  try{ saved = localStorage.getItem('fr-site-lang'); }catch(e){}
+  html.lang = saved || (navigator.language && navigator.language.indexOf('zh') === 0 ? 'zh' : 'en');
+  var btn = document.getElementById('langBtn');
+  function label(){ btn.textContent = html.lang === 'zh' ? 'English' : '中文'; }
+  label();
+  btn.onclick = function(){
+    html.lang = html.lang === 'zh' ? 'en' : 'zh';
+    try{ localStorage.setItem('fr-site-lang', html.lang); }catch(e){}
+    label();
+  };
+})();
+</script>
+</body>
+</html>
