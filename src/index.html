@@ -598,6 +598,8 @@
     const ct = $('clipTitle');    if(ct) ct.textContent = TP('peerClipTitle');
     const ta = $('clip');         if(ta) ta.placeholder = TP('clipPlaceholder');
     const sc = $('sendClip');     if(sc && sc.textContent !== tt('sending')) sc.textContent = TP('sendTo');
+    // 字数计数器平时由输入事件维护，但启动与切语言时也要按当前语言重算（空态是「0 字 / 0 chars」）
+    const cc = $('cc');           if(cc) cc.textContent = tt('nChars', {n: $('clip').value.length});
   }
 
   // 身份取自 /status。拿不到也不阻塞页面 —— 继续用「对方」这个默认称呼。
