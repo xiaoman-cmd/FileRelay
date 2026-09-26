@@ -36,7 +36,7 @@ FORCE_ICON=0
 
 # 系统改写 bundle 时会产生 bundle container 临时文件 (.BC.T_*) 与 Finder 元数据，
 # 它们不是构建产出，比对时必须排除，否则会误报"安装校验失败"
-DIFF_X=(-x '.BC.T_*' -x '.DS_Store' -x '._*' -x '.localized')
+DIFF_X=(-x '.BC.T_*' -x '.DS_Store' -x '._*' -x '.localized' -x '__pycache__')
 
 # ------------------------------------------------------------------ 输出
 if [ -t 1 ]; then
@@ -157,6 +157,27 @@ osacompile -o /tmp/atbuild_start_check.scpt "$SRC/start.applescript" 2>/tmp/atbu
   || { cat /tmp/atbuild_as.err >&2; die "start.applescript 编译失败"; }
 ok "start.applescript 编译检查通过"
 
+# ============================================================== 0.5 嵌入 Python（零依赖）
+step "嵌入 Python 运行时"
+if [ ! -x "$SRC/python-runtime/bin/python3" ]; then
+  echo "  src/python-runtime 缺失，尝试自动下载（python-build-standalone）"
+  bash "$SRC/fetch-python.sh" || die "无法获取嵌入式 Python，请手动运行 src/fetch-python.sh"
+fi
+[ -x "$SRC/python-runtime/bin/python3" ] || die "嵌入式 Python 缺失：$SRC/python-runtime/bin/python3"
+ok "嵌入式 Python 就绪（$( "$SRC/python-runtime/bin/python3" --version 2>&1 )）"
+# 二维码依赖自检：缺 qrcode/Pillow 时 /qr.png 会回退低清码，给出明确提醒
+if "$SRC/python-runtime/bin/python3" -c "import qrcode, PIL" 2>/dev/null; then
+  ok "二维码依赖就绪（qrcode + Pillow，/qr.png 出高清码）"
+else
+  warn "未检测到 qrcode/Pillow，正在补装（否则二维码会发虚）"
+  "$SRC/python-runtime/bin/python3" -m pip install --no-cache-dir --quiet qrcode Pillow \
+    || warn "补装失败，请手动：src/python-runtime/bin/python3 -m pip install qrcode Pillow"
+fi
+
+# 嵌入源是运行时产物，server.py 跑过会往里面写 __pycache__。构建前清掉，避免被 ditto
+# 带进 bundle、又污染逐文件校验。运行时由 launcher 设 PYTHONDONTWRITEBYTECODE=1 不再产生。
+find "$SRC/python-runtime" -type d -name '__pycache__' -prune -exec rm -rf {} + 2>/dev/null || true
+
 # ============================================================== 1. 图标
 mkdir -p "$DIST"
 step "图标"
@@ -210,6 +231,12 @@ cp "$SRC/ui-console.png" "$SRC/ui-phone.png" "$SRC/ui-console-en.png" "$SRC/ui-p
 cp "$DIST/AppIcon.icns" "$DIST/MenuIcon.png" "$DIST/MenuIcon@2x.png" "$DIST/MenuIcon.style" "$RES/"
 chmod 644 "$RES"/* "$STAGE/$APP_NAME.app/Contents/Info.plist"
 
+# 嵌入的 Python 运行时（零依赖）：整目录拷进 Resources/python。
+# 必须放在上面的 chmod 644 之后，否则 bin/python3 会被改成败可执行。
+ditto "$SRC/python-runtime" "$RES/python"
+# 拷完立即清掉任何 __pycache__，保证 STAGE 干净、校验可比
+find "$RES/python" -type d -name '__pycache__' -prune -exec rm -rf {} + 2>/dev/null || true
+
 # 逐项验收，任何一项缺失都不落地
 for f in Contents/Info.plist Contents/MacOS/AndroidTransfer \
          Contents/Resources/server.py Contents/Resources/index.html \
@@ -239,6 +266,8 @@ fi
 #   3) 覆盖式天然不误删。唯一代价：将来若改了文件名，旧文件会留下 —— 下面的校验专门抓它，
 #      失败时把差异逐条打出来，照着清理即可。
 ditto "$STAGE/$APP_NAME.app" "$APP" || die "写入 bundle 失败"
+# 清理旧 bundle 里可能残留的 __pycache__（上一轮构建遗留），否则逐文件校验仍会报差异
+find "$APP/Contents/Resources/python" -type d -name '__pycache__' -prune -exec rm -rf {} + 2>/dev/null || true
 sweep_shadow "$APP"
 if ! diff -rq "${DIFF_X[@]}" "$STAGE/$APP_NAME.app" "$APP" >/dev/null 2>&1; then
   warn "bundle 校验不一致（下面列出的多为遗留在 bundle 里的旧文件）："

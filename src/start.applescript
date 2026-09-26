@@ -39,6 +39,14 @@ on run argv
     set serverPort to my readPort(50)
     set addrText to my fetchAddr()
 
+    -- 关键修复（解决"双击没反应、看不到图标"）：
+    -- 本 .app 入口是 bash 启动器 + osascript 子进程，不是原生 Cocoa app，
+    -- 系统不会自动把承载菜单栏的进程设为「菜单栏代理」。不显式设置的话，
+    -- NSStatusItem 在大多数 macOS 版本上根本不显示（进程在跑，但顶栏没图标）。
+    -- 0=Regular(有 Dock 图标) 1=Accessory(仅菜单栏,无 Dock) 2=Prohibited(都不显)。
+    -- 设为 1 与 Info.plist 的 LSUIElement 一致：只显示状态栏图标，不占 Dock。
+    (current application's NSApplication's sharedApplication())'s setActivationPolicy:1
+
     set statusItem to current application's NSStatusBar's systemStatusBar's statusItemWithLength:-1.0
     set btn to statusItem's button()
 

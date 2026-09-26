@@ -2,7 +2,7 @@
 
 A local-network file & text transfer bridge between your phone and your computer. **Zero install on the phone side**: scan the QR code in a browser and go — no app needed.
 
-Pure Python standard library (zero third-party dependencies). Ships with a macOS menu bar app; Windows / Linux run the same server via launcher scripts.
+Pure Python standard library (zero third-party dependencies). The macOS app **bundles its own Python runtime** — the end user needs to install nothing. Windows / Linux run the same server via launcher scripts (they need Python 3.8+ on the system).
 
 ![Host console](src/ui-console-en.png)
 
@@ -17,11 +17,28 @@ The in-app UI supports **Chinese / English switching** (button at the top-right 
 
 | Platform | Get it | Run |
 |---|---|---|
-| **macOS** | [FileRelay.app.zip](https://github.com/xiaoman-cmd/FileRelay/releases/download/v1.0/FileRelay.app.zip) (v1.0 release) | Unzip → move to `/Applications` → open. First-launch warning? Run once: `xattr -dr com.apple.quarantine /Applications/FileRelay.app` |
+| **macOS** | [FileRelay.app.zip](https://github.com/xiaoman-cmd/FileRelay/releases/download/v1.0/FileRelay.app.zip) (v1.0 release) | Unzip → move to `/Applications` → open (see the macOS notes below) |
 | **Windows** | [Source code (zip)](https://github.com/xiaoman-cmd/FileRelay/archive/refs/heads/main.zip) | Unzip → double-click `scripts\start.bat` (needs [Python 3.8+](https://www.python.org/downloads/), tick *Add to PATH*) |
 | **Linux** | [Source code (zip)](https://github.com/xiaoman-cmd/FileRelay/archive/refs/heads/main.zip) | Unzip → `./scripts/start.sh` (needs Python 3.8+) |
 
 macOS is the only packaged build (it's the only version with the menu-bar shell). Windows / Linux intentionally run from source — the server is pure standard library, so "source" costs nothing extra. The guest side (any phone / computer) never installs anything.
+
+### macOS — read this first (no window by design)
+
+FileRelay on macOS is a **menu bar app** (`LSUIElement`). After you open it, **no window appears** — that's normal. Look at the **top-right of your screen (the status bar)**: a small icon shows up there. Click it to reveal the QR code, send/receive options, and settings. (First launch pops a one-time tip pointing you to that icon.)
+
+If double-clicking "does nothing", it's almost always one of these two — in this order:
+
+1. **Gatekeeper blocked it (most common).** A downloaded app is quarantined; the first launch is silently blocked. Fix — either:
+   - **Right-click** the app → **Open** (approves it once and remembers), **or**
+   - remove the quarantine flag in Terminal (run once):
+     ```bash
+     sudo xattr -dr com.apple.quarantine /Applications/FileRelay.app
+     ```
+   Then open it normally.
+2. **(Legacy) Python 3.8+ not found.** The macOS app now **bundles its own Python**, so this should no longer happen. The launcher still auto-detects a system Python as a fallback (from `/usr/bin`, `/usr/local/bin` on Intel, `/opt/homebrew/bin` on Apple Silicon, `/opt/local/bin`, pyenv); if none is 3.8+ it shows a clear dialog instead of failing silently. If you ever build from source and strip the bundled runtime, install Python 3.8+ from [python.org](https://www.python.org/downloads/) or `brew install python`, then reopen.
+
+The launcher writes its own diagnostics to `~/Library/Logs/FileRelay-launch.log` if anything still goes wrong.
 
 Project website: **https://xiaoman-cmd.github.io/FileRelay/**
 
